@@ -186,6 +186,29 @@
 		}
 	}
 
+	async function deleteDog(dog) {
+		if (!dog?._id || dogs.length <= 1) return;
+
+		statusMessage = '';
+		successMessage = '';
+
+		try {
+			const response = await fetch(`/api/dogs?id=${dog._id}`, {
+				method: 'DELETE',
+				headers: authHeaders()
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.message || 'Hund konnte nicht gelöscht werden');
+
+			dogs = dogs.filter((item) => item._id !== dog._id);
+			activities = activities.filter((activity) => activity.dogName !== dog.name);
+			dogName = dogs[0]?.name || 'Milo';
+			successMessage = `${dog.name} wurde gelöscht.`;
+		} catch (error) {
+			statusMessage = error instanceof Error ? error.message : 'Hund konnte nicht gelöscht werden.';
+		}
+	}
+
 	function setStep(step) {
 		currentStep = Math.min(3, Math.max(1, step));
 		successMessage = '';
@@ -253,6 +276,28 @@
 
 		activities = [];
 		localStorage.setItem(storageKey, JSON.stringify([]));
+	}
+
+	async function deleteActivity(activity) {
+		if (!activity?._id) return;
+
+		statusMessage = '';
+		successMessage = '';
+
+		try {
+			const response = await fetch(`/api/activities?id=${activity._id}`, {
+				method: 'DELETE',
+				headers: authHeaders()
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.message || 'Aktivität konnte nicht gelöscht werden');
+
+			activities = activities.filter((item) => item._id !== activity._id);
+			localStorage.setItem(storageKey, JSON.stringify(activities));
+			successMessage = 'Aktivität wurde gelöscht.';
+		} catch (error) {
+			statusMessage = error instanceof Error ? error.message : 'Aktivität konnte nicht gelöscht werden.';
+		}
 	}
 
 	async function resetDemo() {
@@ -326,10 +371,16 @@
 		{setStep}
 		{updateAmountForType}
 		onAddDog={addDog}
+		onDeleteDog={deleteDog}
 		onSave={saveEntry}
 	/>
 
-	<Timeline activities={sortedActivities} {formatActivity} {clearActivities} />
+	<Timeline
+		activities={sortedActivities}
+		{formatActivity}
+		{clearActivities}
+		onDeleteActivity={deleteActivity}
+	/>
 </main>
 
 <BottomNav />

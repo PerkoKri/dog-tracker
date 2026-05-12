@@ -1,5 +1,5 @@
 import type { Config, Context } from '@netlify/functions';
-import { getAuthUser, getDatabase, json } from './_shared';
+import { getAuthUser, getDatabase, json, toObjectId } from './_shared';
 
 type DogInput = {
 	name?: string;
@@ -34,6 +34,23 @@ export default async (req: Request, _context: Context) => {
 			const dog = cleanDog(await req.json(), authUser.id);
 			const result = await dogs.insertOne(dog);
 			return json({ dog: { ...dog, _id: result.insertedId.toString() } }, 201);
+		}
+
+		if (req.method === 'DELETE') {
+			const url = new URL(req.url);
+			const id = url.searchParams.get('id');
+			if (!id) return json({ message: 'Hund-ID fehlt' }, 400);
+
+			const dog = await dogs.findOne({ _id: toObjectId(id), userId: authUser.id });
+			if (!dog) return json({ message: 'Hund wurde nicht gefunden' }, 404);
+
+			const dogCount = await dogs.countDocuments({ userId: authUser.id });
+			if (dogCount <= 1) return json({ message: 'Der letzte Hund kann nicht gelöscht werden.' }, 400);
+
+			await dogs.deleteOne({ _id: toObjectId(id), userId: authUser.id });
+			await db.collection('activities').deleteMany({ userId: authUser.id, dogName: dog.name });
+
+			return json({ ok: true });
 		}
 
 		return json({ message: 'Methode nicht erlaubt' }, 405);

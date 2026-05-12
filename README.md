@@ -35,10 +35,11 @@ Passwort: demo123
 - Persönliche Daten pro eingeloggtem User
 - Mobile Tagesübersicht für Milo
 - Kennzahlen für Gassi-Minuten, Fütterungen und letzte Aktivität
-- Hundeverwaltung mit Standardhunden und neuen Hunden
+- Hundeverwaltung mit Standardhunden, neuen Hunden und Löschen von Hunden
 - Dreistufige Schnellerfassung
 - Aktivitätstypen: Gassi, Futter und Pflege
-- Verlauf der letzten Einträge
+- Verlauf der letzten Einträge mit gezieltem Löschen einzelner Aktivitäten
+- Alle Aktivitäten des eingeloggten Users leeren
 - Persistenz über MongoDB mit Netlify Function `/api/activities`
 - Lokaler Fallback über `localStorage`, falls die API nicht erreichbar ist
 - Sichtbares Feedback beim Speichern und bei Offline-Fallback
@@ -69,6 +70,16 @@ Eine Aktivität enthält:
 - `time`
 - `note`
 - `createdAt`
+
+## Erfüllte Mindestanforderungen
+
+- Übersicht: persönliches Dashboard und Verlauf der Aktivitäten
+- Daten erfassen: Aktivität hinzufügen und Hunde hinzufügen
+- Daten löschen: einzelne Aktivitäten, alle Aktivitäten und Hunde löschen
+- Persistenz: MongoDB mit `users`, `dogs` und `activities`
+- Komponenten: Auth, Dashboard, Formular, Verlauf und Navigation sind getrennt
+- Deployment: Netlify Live-Demo
+- Git/GitHub: Repository ist verlinkt
 
 ## Designentscheidungen
 

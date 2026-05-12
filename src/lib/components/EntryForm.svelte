@@ -13,8 +13,11 @@
 		setStep,
 		updateAmountForType,
 		onAddDog,
+		onDeleteDog,
 		onSave
 	} = $props();
+
+	let selectedDog = $derived(dogs.find((dog) => dog.name === dogName));
 </script>
 
 <section class="entry-panel" aria-labelledby="entry-title">
@@ -48,6 +51,12 @@
 				<input bind:value={newDogName} placeholder="Neuen Hund hinzufügen" />
 				<button class="secondary-button" type="button" onclick={onAddDog}>+</button>
 			</div>
+
+			{#if selectedDog && dogs.length > 1}
+				<button class="danger-button" type="button" onclick={() => onDeleteDog(selectedDog)}>
+					Ausgewählten Hund löschen
+				</button>
+			{/if}
 		{/if}
 
 		{#if currentStep === 2}
@@ -248,7 +257,8 @@
 	}
 
 	.primary-button,
-	.secondary-button {
+	.secondary-button,
+	.danger-button {
 		min-height: 46px;
 		border: 0;
 		border-radius: 8px;
@@ -269,6 +279,13 @@
 	.secondary-button {
 		background: #efe7dc;
 		color: #17211b;
+	}
+
+	.danger-button {
+		width: 100%;
+		margin-top: 10px;
+		background: #f7dfd8;
+		color: #8a2b18;
 	}
 
 	.invisible {

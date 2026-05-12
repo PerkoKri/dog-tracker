@@ -1,5 +1,5 @@
 <script>
-	let { activities = [], formatActivity, clearActivities } = $props();
+	let { activities = [], formatActivity, clearActivities, onDeleteActivity } = $props();
 </script>
 
 <section class="timeline-panel" aria-labelledby="timeline-title">
@@ -23,6 +23,14 @@
 						<p>{formatActivity(activity)}</p>
 						<p>{activity.note || 'Keine Notiz'}</p>
 					</div>
+					<button
+						class="delete-button"
+						type="button"
+						aria-label={`${activity.dogName} ${activity.type} von ${activity.time} löschen`}
+						onclick={() => onDeleteActivity(activity)}
+					>
+						×
+					</button>
 				</article>
 			{/each}
 		{/if}
@@ -76,7 +84,8 @@
 
 	.timeline-item {
 		display: grid;
-		grid-template-columns: 40px 1fr;
+		grid-template-columns: 40px 1fr 34px;
+		align-items: start;
 		gap: 12px;
 		padding: 12px 0;
 		border-top: 1px solid #eee3d6;
@@ -107,6 +116,18 @@
 		color: #6a716c;
 		font-size: 0.86rem;
 		line-height: 1.35;
+	}
+
+	.delete-button {
+		width: 34px;
+		height: 34px;
+		border: 0;
+		border-radius: 8px;
+		background: #f7dfd8;
+		color: #8a2b18;
+		font-size: 1.2rem;
+		font-weight: 900;
+		line-height: 1;
 	}
 
 	.empty-state {
