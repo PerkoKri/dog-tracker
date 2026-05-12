@@ -1,0 +1,11 @@
+node_modules/
+.svelte-kit/
+.netlify/
+build/
+.env
+.env.*
+!.env.example
+dist/
+coverage/
+.DS_Store
+npm-debug.log*
