@@ -5,22 +5,37 @@ DogTracker ist ein mobiler SvelteKit-Prototyp für Hundebesitzer:innen. Die App 
 ## Links
 
 - Live-Demo: https://dog-tracker-kristian.netlify.app/
+- GitHub: https://github.com/PerkoKri/dog-tracker
 - Figma/Mockup: https://www.figma.com/site/oeVTCmei0b0H6m29yesxzv/DogTracker?node-id=0-3&t=sD8JXcT3QnVaDrEd-1
 
 ## Hauptworkflow
 
-1. Der Nutzer startet im Dashboard und sieht die letzten Aktivitäten.
-2. Über die Schnellerfassung wählt der Nutzer zuerst den Hund aus.
-3. Danach wird die Aktivität gewählt, zum Beispiel Gassi, Futter oder Pflege.
-4. Im letzten Schritt werden Dauer/Menge, Uhrzeit und eine optionale Notiz erfasst.
-5. Die Aktivität wird gespeichert.
-6. Eine Erfolgsmeldung bestätigt die Speicherung.
-7. Das Dashboard und der Verlauf zeigen die aktualisierten Daten.
+1. Der Nutzer registriert sich oder loggt sich ein.
+2. Nach dem Login sieht der Nutzer ein persönliches Dashboard.
+3. Der Nutzer wählt einen Hund aus oder fügt einen neuen Hund hinzu.
+4. Danach wird die Aktivität gewählt, zum Beispiel Gassi, Futter oder Pflege.
+5. Im letzten Schritt werden Dauer/Menge, Uhrzeit und eine optionale Notiz erfasst.
+6. Die Aktivität wird in MongoDB gespeichert.
+7. Eine Erfolgsmeldung bestätigt die Speicherung.
+8. Das Dashboard und der Verlauf zeigen die aktualisierten Daten.
+
+## Test-Account
+
+Für die Demo kann ein eigener Account registriert werden. Der Login-Screen ist mit folgenden Testdaten vorausgefüllt:
+
+```text
+E-Mail: demo@dogtracker.ch
+Passwort: demo123
+```
 
 ## Funktionen
 
+- Registrierung und Login
+- Passwort-Hashing auf der Server-Seite
+- Persönliche Daten pro eingeloggtem User
 - Mobile Tagesübersicht für Milo
 - Kennzahlen für Gassi-Minuten, Fütterungen und letzte Aktivität
+- Hundeverwaltung mit Standardhunden und neuen Hunden
 - Dreistufige Schnellerfassung
 - Aktivitätstypen: Gassi, Futter und Pflege
 - Verlauf der letzten Einträge
@@ -33,18 +48,21 @@ DogTracker ist ein mobiler SvelteKit-Prototyp für Hundebesitzer:innen. Die App 
 
 - SvelteKit mit Svelte-Komponenten
 - Komponentenstruktur:
+  - `AuthPanel.svelte`
   - `Dashboard.svelte`
   - `EntryForm.svelte`
   - `Timeline.svelte`
   - `BottomNav.svelte`
 - Netlify Deployment mit statischem Build
 - Netlify Function für API-Zugriffe
-- MongoDB Collection: `activities`
+- MongoDB Database: `dog-tracker`
+- MongoDB Collections: `users`, `dogs`, `activities`
 
 ## Datenmodell
 
 Eine Aktivität enthält:
 
+- `userId`
 - `dogName`
 - `type`
 - `amount`
@@ -98,11 +116,12 @@ Das Projekt ist für Netlify vorbereitet:
 - Publish Directory: `build`
 - Function Directory: `netlify/functions`
 - Benötigte Environment Variable: `MONGODB_URI`
+- Optionale Environment Variable: `AUTH_SECRET`
 
 ## Bekannte Limitationen
 
-- Es gibt noch kein Login und keine Benutzerrollen.
-- Der Fokus liegt auf einem funktionierenden Hauptworkflow.
+- Es gibt Login, aber noch keine Rollen wie Admin/User.
+- Der Fokus liegt auf einem funktionierenden Hauptworkflow für einzelne Hundebesitzer:innen.
 - Wenn MongoDB nicht erreichbar ist, nutzt die App bewusst einen lokalen Fallback im Browser.
 
 ## KI-Deklaration

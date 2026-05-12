@@ -2,6 +2,8 @@
 	let {
 		currentStep = $bindable(1),
 		dogName = $bindable('Milo'),
+		dogs = [],
+		newDogName = $bindable(''),
 		type = $bindable('Gassi'),
 		amount = $bindable(25),
 		time = $bindable(''),
@@ -10,6 +12,7 @@
 		successMessage = '',
 		setStep,
 		updateAmountForType,
+		onAddDog,
 		onSave
 	} = $props();
 </script>
@@ -36,10 +39,15 @@
 		{#if currentStep === 1}
 			<label for="dog">Hund</label>
 			<select id="dog" bind:value={dogName}>
-				<option>Milo</option>
-				<option>Luna</option>
-				<option>Nala</option>
+				{#each dogs as dog}
+					<option value={dog.name}>{dog.name}</option>
+				{/each}
 			</select>
+
+			<div class="add-dog-row">
+				<input bind:value={newDogName} placeholder="Neuen Hund hinzufügen" />
+				<button class="secondary-button" type="button" onclick={onAddDog}>+</button>
+			</div>
 		{/if}
 
 		{#if currentStep === 2}
@@ -66,11 +74,11 @@
 			<div class="form-grid">
 				<label>
 					Dauer / Menge
-					<input type="number" min="1" bind:value={amount} />
+					<input inputmode="numeric" bind:value={amount} />
 				</label>
 				<label>
 					Uhrzeit
-					<input type="time" bind:value={time} />
+					<input inputmode="numeric" placeholder="HH:MM" bind:value={time} />
 				</label>
 			</div>
 			<label>
@@ -222,6 +230,13 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 10px;
+	}
+
+	.add-dog-row {
+		display: grid;
+		grid-template-columns: 1fr 46px;
+		gap: 8px;
+		margin-top: 10px;
 	}
 
 	textarea {

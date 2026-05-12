@@ -1,11 +1,13 @@
 <script>
 	import { onMount } from 'svelte';
+	import AuthPanel from '$lib/components/AuthPanel.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
 	import Dashboard from '$lib/components/Dashboard.svelte';
 	import EntryForm from '$lib/components/EntryForm.svelte';
 	import Timeline from '$lib/components/Timeline.svelte';
 
 	const storageKey = 'dogtracker-activities';
+	const authStorageKey = 'dogtracker-auth';
 
 	const starterActivities = [
 		{
@@ -27,8 +29,18 @@
 	];
 
 	let activities = $state(starterActivities);
+	let dogs = $state([{ name: 'Milo' }, { name: 'Luna' }]);
+	let user = $state(null);
+	let token = $state('');
+	let authMode = $state('login');
+	let authName = $state('');
+	let authEmail = $state('demo@dogtracker.ch');
+	let authPassword = $state('demo123');
+	let authMessage = $state('');
+	let isAuthenticating = $state(false);
 	let currentStep = $state(1);
 	let dogName = $state('Milo');
+	let newDogName = $state('');
 	let type = $state('Gassi');
 	let amount = $state(25);
 	let time = $state('');
@@ -39,26 +51,101 @@
 	let successMessage = $state('');
 
 	let sortedActivities = $derived([...activities].sort((a, b) => b.createdAt - a.createdAt));
-	let miloActivities = $derived(activities.filter((activity) => activity.dogName === 'Milo'));
+	let selectedDogActivities = $derived(activities.filter((activity) => activity.dogName === dogName));
 	let walkMinutes = $derived(
-		miloActivities
+		selectedDogActivities
 			.filter((activity) => activity.type === 'Gassi')
 			.reduce((sum, activity) => sum + Number(activity.amount || 0), 0)
 	);
-	let foodCount = $derived(miloActivities.filter((activity) => activity.type === 'Futter').length);
-	let latestActivity = $derived([...miloActivities].sort((a, b) => b.createdAt - a.createdAt)[0]);
+	let foodCount = $derived(selectedDogActivities.filter((activity) => activity.type === 'Futter').length);
+	let latestActivity = $derived([...selectedDogActivities].sort((a, b) => b.createdAt - a.createdAt)[0]);
 
 	onMount(async () => {
 		time = new Date().toTimeString().slice(0, 5);
-		await loadActivities();
+		const savedAuth = localStorage.getItem(authStorageKey);
+		if (savedAuth) {
+			try {
+				const parsed = JSON.parse(savedAuth);
+				user = parsed.user;
+				token = parsed.token;
+			} catch {
+				localStorage.removeItem(authStorageKey);
+			}
+		}
+
+		if (token) {
+			await loadDogs();
+			await loadActivities();
+		} else {
+			isLoading = false;
+		}
 	});
+
+	function authHeaders() {
+		return {
+			Authorization: `Bearer ${token}`
+		};
+	}
+
+	async function submitAuth() {
+		isAuthenticating = true;
+		authMessage = '';
+
+		try {
+			const response = await fetch(`/api/auth?action=${authMode}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: authName,
+					email: authEmail,
+					password: authPassword
+				})
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.message || 'Login fehlgeschlagen');
+
+			user = data.user;
+			token = data.token;
+			localStorage.setItem(authStorageKey, JSON.stringify({ user, token }));
+			statusMessage = '';
+			successMessage = '';
+			await loadDogs();
+			await loadActivities();
+		} catch (error) {
+			authMessage = error instanceof Error ? error.message : 'Login fehlgeschlagen';
+		} finally {
+			isAuthenticating = false;
+		}
+	}
+
+	function logout() {
+		user = null;
+		token = '';
+		activities = starterActivities;
+		dogs = [{ name: 'Milo' }, { name: 'Luna' }];
+		currentStep = 1;
+		localStorage.removeItem(authStorageKey);
+	}
+
+	async function loadDogs() {
+		try {
+			const response = await fetch('/api/dogs', { headers: authHeaders() });
+			if (!response.ok) throw new Error('Hunde konnten nicht geladen werden');
+			const data = await response.json();
+			dogs = Array.isArray(data.dogs) && data.dogs.length ? data.dogs : [{ name: 'Milo' }];
+			dogName = dogs[0]?.name || 'Milo';
+		} catch {
+			dogs = [{ name: 'Milo' }, { name: 'Luna' }];
+			dogName = 'Milo';
+		}
+	}
 
 	async function loadActivities() {
 		isLoading = true;
 		statusMessage = '';
 
 		try {
-			const response = await fetch('/api/activities');
+			const response = await fetch('/api/activities', { headers: authHeaders() });
 			if (!response.ok) throw new Error('API nicht erreichbar');
 			const data = await response.json();
 			activities = Array.isArray(data.activities) ? data.activities : [];
@@ -76,6 +163,26 @@
 			statusMessage = 'Offline-Modus: Daten werden lokal im Browser angezeigt.';
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	async function addDog() {
+		const name = newDogName.trim();
+		if (!name) return;
+
+		try {
+			const response = await fetch('/api/dogs', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', ...authHeaders() },
+				body: JSON.stringify({ name })
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.message || 'Hund konnte nicht gespeichert werden');
+			dogs = [...dogs, data.dog];
+			dogName = data.dog.name;
+			newDogName = '';
+		} catch (error) {
+			statusMessage = error instanceof Error ? error.message : 'Hund konnte nicht gespeichert werden.';
 		}
 	}
 
@@ -112,7 +219,7 @@
 		try {
 			const response = await fetch('/api/activities', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', ...authHeaders() },
 				body: JSON.stringify(entry)
 			});
 			if (!response.ok) throw new Error('Speichern fehlgeschlagen');
@@ -139,7 +246,7 @@
 		successMessage = '';
 
 		try {
-			await fetch('/api/activities', { method: 'DELETE' });
+			await fetch('/api/activities', { method: 'DELETE', headers: authHeaders() });
 		} catch {
 			statusMessage = 'Nur lokale Daten wurden geleert.';
 		}
@@ -165,18 +272,32 @@
 	/>
 </svelte:head>
 
+{#if !user}
+	<AuthPanel
+		bind:authMode
+		bind:name={authName}
+		bind:email={authEmail}
+		bind:password={authPassword}
+		{isAuthenticating}
+		{authMessage}
+		onSubmit={submitAuth}
+	/>
+{:else}
 <main class="app-shell">
 	<header class="topbar">
 		<div>
 			<p class="eyebrow">DogTracker</p>
-			<h1>Heute mit Milo</h1>
+			<h1>Heute mit {dogName}</h1>
 		</div>
-		<button class="icon-button" type="button" aria-label="Demo-Daten zurücksetzen" onclick={resetDemo}>
-			<svg viewBox="0 0 24 24" aria-hidden="true">
-				<path d="M3 12a9 9 0 1 0 3-6.7" />
-				<path d="M3 4v5h5" />
-			</svg>
-		</button>
+		<div class="header-actions">
+			<button class="icon-button" type="button" aria-label="Demo-Daten zurücksetzen" onclick={resetDemo}>
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<path d="M3 12a9 9 0 1 0 3-6.7" />
+					<path d="M3 4v5h5" />
+				</svg>
+			</button>
+			<button class="logout-button" type="button" onclick={logout}>Logout</button>
+		</div>
 	</header>
 
 	{#if statusMessage}
@@ -194,14 +315,17 @@
 	<EntryForm
 		bind:currentStep
 		bind:dogName
+		bind:newDogName
 		bind:type
 		bind:amount
 		bind:time
 		bind:note
+		{dogs}
 		{isSaving}
 		{successMessage}
 		{setStep}
 		{updateAmountForType}
+		onAddDog={addDog}
 		onSave={saveEntry}
 	/>
 
@@ -209,6 +333,7 @@
 </main>
 
 <BottomNav />
+{/if}
 
 <style>
 	:global(body) {
@@ -285,6 +410,23 @@
 		background: #ffffff;
 		color: #18544d;
 		box-shadow: 0 8px 20px rgba(39, 117, 108, 0.1);
+	}
+
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.logout-button {
+		min-height: 42px;
+		border: 0;
+		border-radius: 8px;
+		background: #efe7dc;
+		color: #17211b;
+		padding: 0 12px;
+		font-size: 0.82rem;
+		font-weight: 900;
 	}
 
 	.status-note {
