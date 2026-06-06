@@ -125,7 +125,7 @@
 <section class="entry-panel" aria-labelledby="entry-title">
 	<div class="section-heading">
 		<div>
-			<p class="eyebrow">Schnellerfassung</p>
+			<p class="eyebrow">Aktivität</p>
 			<h2 id="entry-title">Aktivität eintragen</h2>
 		</div>
 		<span class="step-indicator">Schritt {currentStep} / 3</span>
@@ -296,10 +296,10 @@
 
 <style>
 	.entry-panel {
-		border: 1px solid #e3d8c9;
-		border-radius: 8px;
-		background: #fffaf2;
-		box-shadow: 0 18px 44px rgba(40, 33, 24, 0.12);
+		border: 1px solid #dfe4dd;
+		border-radius: 16px;
+		background: rgba(255, 255, 255, 0.96);
+		box-shadow: 0 16px 40px rgba(16, 24, 40, 0.08);
 		padding: 18px;
 		margin-top: 14px;
 	}
@@ -438,7 +438,7 @@
 		justify-content: center;
 		gap: 5px;
 		border: 1px solid #dfe4dd;
-		border-radius: 12px;
+		border-radius: 14px;
 		background: #ffffff;
 		color: #66707a;
 		padding: 10px;
@@ -456,6 +456,7 @@
 		border-color: #2c6f67;
 		background: #eef6f3;
 		color: #1f5f57;
+		box-shadow: 0 10px 22px rgba(44, 111, 103, 0.1);
 	}
 
 	.form-grid {

@@ -1382,6 +1382,16 @@
 		text-overflow: ellipsis;
 	}
 
+	:global(input[type='file']::file-selector-button) {
+		margin-right: 12px;
+		border: 0;
+		border-radius: 999px;
+		background: #eaf2ef;
+		color: #1f5f57;
+		padding: 8px 12px;
+		font-weight: 850;
+	}
+
 	:global(label),
 	:global(fieldset) {
 		min-width: 0;
@@ -1414,6 +1424,11 @@
 		justify-content: space-between;
 		gap: 16px;
 		margin-bottom: 18px;
+		border: 1px solid rgba(223, 228, 221, 0.8);
+		border-radius: 16px;
+		background: rgba(255, 255, 255, 0.72);
+		backdrop-filter: blur(14px);
+		padding: 14px;
 	}
 
 	.eyebrow {
@@ -1439,10 +1454,10 @@
 
 	.logout-button {
 		min-height: 42px;
-		border: 0;
+		border: 1px solid #d6dfd8;
 		border-radius: 12px;
-		background: #eef2ed;
-		color: #17211b;
+		background: #ffffff;
+		color: #1f5f57;
 		padding: 0 12px;
 		font-size: 0.82rem;
 		font-weight: 900;
