@@ -27,7 +27,7 @@
 ## 2. Lösungsidee
 
 - **Kernfunktionalität:** DogTracker unterstützt zwei zusammenhängende Workflows: Aktivitäten nachträglich erfassen und zukünftige Aufgaben planen. Nutzer:innen können sich registrieren, Hunde erfassen, Aktivitäten speichern, Erinnerungen planen, fällige Aufgaben abhaken und erledigte Erinnerungen automatisch im Verlauf dokumentieren.
-- **Mindestumfang:** Der Prototyp ist eine interaktive Web-App mit mehreren Bereichen, Login/Registrierung, Datenbankanbindung, persönlicher Hunde-Verwaltung, Erstellen und Löschen von Aktivitäten, Verlauf, Statistik, Netlify-Deployment, GitHub-Repository und dokumentierter Usability Evaluation.
+- **Mindestumfang:** Der Prototyp ist eine interaktive Web-App mit mehreren Bereichen, Login/Registrierung, Datenbankanbindung, persönlicher Hunde-Verwaltung, Erstellen und Löschen von Aktivitäten, Verlauf, Netlify-Deployment, GitHub-Repository und dokumentierter Usability Evaluation.
 - **Erweiterung:** Die Erfassung unterscheidet zwischen Gassi, Futter, Pflege, Medikamenten und Arztterminen. Zusätzlich gibt es Anhänge für Fotos und Dokumente, einen Planer mit Kalender- und Tagesansicht, allgemeine Aufgaben, Erledigt-Funktion für kommende Aufgaben und Cloud-Speicher für die Hundeakte.
 - **Annahmen [Optional]:** Nutzer:innen möchten die App vor allem mobil und schnell bedienen. Der Ablauf muss deshalb kurz, verständlich und ohne komplexe Menüs funktionieren.
 - **Abgrenzung [Optional]:** Nicht Bestandteil des Prototyps sind Rollen wie Admin/User, native Push-Benachrichtigungen im Hintergrund, Synchronisation mit externen Kalendern, OCR-Auswertung von Dokumenten oder produktive Freigabe- und Rechteprozesse für einen realen Betrieb.
@@ -40,17 +40,17 @@
 - **Wesentliche Erkenntnisse:**
   - Der Hauptworkflow muss ohne Erklärung verständlich sein.
   - Login und persönliche Daten müssen getrennt pro Nutzer:in funktionieren.
-  - Die Navigation soll klar zwischen Übersicht, Erfassung, Planer und Statistik unterscheiden.
+  - Die Navigation soll klar zwischen Übersicht, Aktivität, Planer und Verlauf unterscheiden.
   - Ein neuer Account soll leer starten und zuerst zur Hunde-Erfassung auffordern.
 
 ### 3.2 Sketch
 
-- **Variantenüberblick:** Zu Beginn wurde ein mobiler Ein-Screen-Prototyp angedacht. Danach wurde die Struktur in vier Hauptbereiche aufgeteilt: `Home`, `Erfassen`, `Planer` und `Statistik`.
+- **Variantenüberblick:** Zu Beginn wurde ein mobiler Ein-Screen-Prototyp angedacht. Danach wurde die Struktur in vier Hauptbereiche aufgeteilt: `Home`, `Aktivität`, `Planer` und `Verlauf`.
 - **Skizzen:** Das Figma-Mockup diente als Ausgangspunkt für die mobile Gestaltung und den linearen Workflow. Die Umsetzung wurde im Prototyp weiterentwickelt, damit Login, Hunde-Erfassung und Aktivitätserfassung getrennt testbar sind.
 
 ### 3.3 Decide
 
-- **Gewählte Variante & Begründung:** Gewählt wurde eine mobile App-Struktur mit Bottom-Navigation. Diese Variante passt zur Nutzung unterwegs und macht den Workflow klarer: Home für Konto und fällige Aufgaben, Erfassen für vergangene Aktivitäten, Planer für kommende Aufgaben und Statistik für Verlauf und Auswertung.
+- **Gewählte Variante & Begründung:** Gewählt wurde eine mobile App-Struktur mit Bottom-Navigation. Diese Variante passt zur Nutzung unterwegs und macht den Workflow klarer: Home für Konto und fällige Aufgaben, Aktivität für vergangene Einträge, Planer für kommende Aufgaben und Verlauf für gespeicherte Aktivitäten.
 - **End-to-End-Ablauf:** Registrierung/Login -> erster Hund erfassen -> Aktivität erfassen -> Aktivität im Dashboard/Verlauf prüfen -> Aktivität löschen.
 - **Mockup:** Figma-Mockup: https://www.figma.com/site/oeVTCmei0b0H6m29yesxzv/DogTracker?node-id=0-3&t=sD8JXcT3QnVaDrEd-1
 
@@ -60,11 +60,11 @@
 
 - **Informationsarchitektur:** Die App besteht aus einem Login-/Registrierungsbereich und drei Hauptbereichen nach dem Login:
   - `Home`: persönliches Dashboard, fällige Erinnerungen, Kontoanzeige, Hunde verwalten
-  - `Erfassen`: Aktivität für einen ausgewählten Hund speichern, optional mit Foto oder Dokument als Anhang
+  - `Aktivität`: Aktivität für einen ausgewählten Hund speichern, optional mit Foto oder Dokument als Anhang
   - `Planer`: Kalender, Tagesansicht, To-dos und wiederkehrende Erinnerungen
-  - `Statistik`: Gesamtübersicht und Verlauf
+  - `Verlauf`: Gesamtübersicht der gespeicherten Aktivitäten mit Löschfunktion
 - **User Interface Design:** Die Oberfläche ist als mobile App gestaltet. Wiederkehrende Karten, klare Buttons und kurze Labels sollen die Bedienung erleichtern.
-- **Designentscheidungen:** Neue Nutzer:innen sehen keine automatisch angelegten Hunde mehr. Dadurch ist klar, dass zuerst ein eigener Hund erfasst werden muss. Der Button `Erfassen` führt direkt zum Formular für Aktivitäten, damit der zentrale Workflow nicht mit Hunde-Verwaltung vermischt wird.
+- **Designentscheidungen:** Neue Nutzer:innen sehen keine automatisch angelegten Hunde mehr. Dadurch ist klar, dass zuerst ein eigener Hund erfasst werden muss. Der Bereich `Aktivität` führt direkt zum Formular für Aktivitäten, damit der zentrale Workflow nicht mit Hunde-Verwaltung vermischt wird.
 - **Screenshots der fertigen App:**
 
   ![Login und Registrierung](docs/screenshots/01-login.png)
@@ -77,7 +77,7 @@
   Im Home-Bereich können Hunde hinzugefügt, ausgewählt und mit Routinen verwaltet werden.
 
   ![Aktivität erfassen](docs/screenshots/04-aktivitaet-erfassen.png)
-  Über `Erfassen` wird eine Aktivität Schritt für Schritt eingetragen.
+  Über `Aktivität` wird eine Aktivität Schritt für Schritt eingetragen.
 
   ![Verlauf nach dem Speichern](docs/screenshots/05-verlauf-nach-speichern.png)
   Gespeicherte Aktivitäten erscheinen direkt in der Tagesübersicht und im Verlauf.
@@ -85,8 +85,8 @@
   ![Planer mit Kalender](docs/screenshots/06-planer-kalender.png)
   Der Planer bündelt Kalender, Tagesansicht, Routinen und offene Aufgaben.
 
-  ![Statistik](docs/screenshots/07-statistik.png)
-  Die Statistik zeigt Kennzahlen und die letzten Einträge des eingeloggten Accounts.
+  ![Verlauf](docs/screenshots/07-verlauf.png)
+  Der Verlauf zeigt alle gespeicherten Einträge des eingeloggten Accounts.
 
 #### 3.4.2. Umsetzung (Technik)
 
@@ -99,8 +99,7 @@
   - `EntryForm.svelte`: dreistufiges Formular für Aktivitäten
   - `PlannerPanel.svelte`: Kalender, Erinnerungen und Erledigt-Funktion
   - `Timeline.svelte`: Verlauf mit Löschfunktion
-  - `StatsPanel.svelte`: Statistikansicht
-  - `BottomNav.svelte`: Navigation zwischen Home, Erfassen, Planer und Statistik
+  - `BottomNav.svelte`: Navigation zwischen Home, Aktivität, Planer und Verlauf
 - **Daten & Schnittstellen:** Die strukturierten Daten werden in MongoDB in der Datenbank `dog-tracker` gespeichert. Verwendete Collections sind `users`, `dogs`, `activities` und `reminders`. Hunde speichern mehrere Futterzeiten, mehrere Medikamente und ein Dossier mit Dokumenten. Dateien wie Fotos, PDFs oder Word-Dokumente werden getrennt davon in Netlify Blobs gespeichert. API-Endpunkte werden über Netlify Functions bereitgestellt:
   - `/api/auth`
   - `/api/dogs`
@@ -115,7 +114,7 @@
 ### 3.5 Validate
 
 - **URL der getesteten Version:** https://dog-tracker-kristian.netlify.app/
-- **Ziele der Prüfung:** Ziel der Usability Evaluation war zu prüfen, ob Testpersonen den Hauptworkflow ohne Hilfe verstehen: Login/Registrierung, Hund hinzufügen, Aktivität über `Erfassen` speichern, Eintrag wiederfinden und Eintrag löschen.
+- **Ziele der Prüfung:** Ziel der Usability Evaluation war zu prüfen, ob Testpersonen den Hauptworkflow ohne Hilfe verstehen: Login/Registrierung, Hund hinzufügen, Aktivität über `Aktivität` speichern, Eintrag wiederfinden und Eintrag löschen.
 - **Vorgehen:** Die Evaluation wurde als moderierter, szenario-basierter Usability-Test vor Ort durchgeführt. Die Testpersonen erhielten die Aufgabe schriftlich und wurden während der Durchführung beobachtet. Rückfragen und Beobachtungen wurden protokolliert.
 - **Stichprobe:** Getestet wurde mit zwei Mitstudierenden, die den Prototyp nicht im Detail kannten.
 - **Aufgaben/Szenarien:**  
@@ -124,17 +123,17 @@
   - Erfolgsquote: 2 von 2 Testpersonen konnten die Aufgabe abschliessen.
   - Login/Registrierung wurde gefunden und erfolgreich verwendet.
   - Das Hinzufügen eines Hundes war grundsätzlich verständlich.
-  - Der Button `Erfassen` wurde als Einstieg für neue Aktivitäten verstanden.
+  - Der Button `Aktivität` wurde als Einstieg für neue Aktivitäten verstanden.
   - Die gespeicherte Aktivität wurde im Verlauf wiedergefunden.
   - Die Löschfunktion wurde gefunden und erfolgreich genutzt.
   - In der ersten getesteten Version war unklar, warum neue Nutzer:innen bereits Hunde sahen. Dies wurde als wichtiges Usability-Problem identifiziert.
-- **Zusammenfassung der Resultate:** Die Evaluation zeigte, dass der zentrale Workflow grundsätzlich verständlich ist. Besonders wichtig war aber, dass neue Nutzer:innen nicht automatisch Beispielhunde sehen dürfen. Die Navigation mit `Home`, `Erfassen` und `Statistik` wurde als sinnvoll bestätigt, da sie die Aufgabenbereiche klar trennt.
+- **Zusammenfassung der Resultate:** Die Evaluation zeigte, dass der zentrale Workflow grundsätzlich verständlich ist. Besonders wichtig war aber, dass neue Nutzer:innen nicht automatisch Beispielhunde sehen dürfen. Die Navigation mit `Home`, `Aktivität`, `Planer` und `Verlauf` wurde als sinnvoll bestätigt, da sie die Aufgabenbereiche klar trennt.
 - **Abgeleitete Verbesserungen:**
   - Neue Accounts starten ohne automatisch angelegte Hunde.
   - Nach dem Login wird zuerst zur Erfassung des ersten Hundes aufgefordert.
   - Die Hunde-Verwaltung wurde auf `Home` platziert.
-  - Die Aktivitätserfassung wurde klar in den Bereich `Erfassen` verschoben.
-  - Der Verlauf und die Statistik wurden in den Bereich `Statistik` ausgelagert.
+  - Die Aktivitätserfassung wurde klar in den Bereich `Aktivität` verschoben.
+  - Der vollständige Verlauf wurde in einen eigenen Bereich `Verlauf` ausgelagert.
 
 ## 4. Erweiterungen [Optional]
 
@@ -152,10 +151,10 @@
 - **Referenz:** Beschrieben in Kapitel 3.4.1 und 3.5.
 - **Aus Evaluation abgeleitet?:** Ja. Die automatische Anzeige von Beispielhunden wurde entfernt.
 
-### 4.3 Statistik und Verlauf
+### 4.3 Verlauf
 
-- **Beschreibung & Nutzen:** Der Bereich `Statistik` zeigt Kennzahlen und den Verlauf der Aktivitäten. Einzelne Einträge können gelöscht werden. Der Verlauf unterstützt auch das Wiederfinden von Anhängen.
-- **Wo umgesetzt:** Frontend in `StatsPanel.svelte` und `Timeline.svelte`, Backend in `netlify/functions/activities.mts`.
+- **Beschreibung & Nutzen:** Der Bereich `Verlauf` zeigt die gespeicherten Aktivitäten. Einzelne Einträge können gelöscht werden. Der Verlauf unterstützt auch das Wiederfinden von Anhängen.
+- **Wo umgesetzt:** Frontend in `Timeline.svelte`, Backend in `netlify/functions/activities.mts`.
 - **Referenz:** Beschrieben in Kapitel 3.4.2.
 - **Aus Evaluation abgeleitet?:** Teilweise. Der Verlauf unterstützt das Wiederfinden und Löschen gespeicherter Aktivitäten.
 

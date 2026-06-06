@@ -743,7 +743,7 @@
 	}
 
 	.account-pill {
-		max-width: 46%;
+		max-width: min(220px, 100%);
 		overflow: hidden;
 		border-radius: 999px;
 		background: #eef6f3;
@@ -758,6 +758,10 @@
 	.header-actions {
 		display: flex;
 		align-items: center;
+		justify-content: flex-end;
+		min-width: 0;
+		max-width: 100%;
+		flex-wrap: wrap;
 		gap: 8px;
 	}
 
@@ -1066,6 +1070,21 @@
 	}
 
 	@media (max-width: 720px) {
+		.section-heading {
+			flex-wrap: wrap;
+		}
+
+		.header-actions {
+			width: 100%;
+			justify-content: flex-start;
+		}
+
+		.collapsed-actions {
+			display: grid;
+			grid-template-columns: 1fr;
+			justify-items: start;
+		}
+
 		.form-grid {
 			grid-template-columns: 1fr;
 		}

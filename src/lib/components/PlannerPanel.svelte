@@ -532,6 +532,7 @@
 	}
 
 	.month-actions button,
+	.compact-item > button,
 	.task-actions button,
 	.primary-button {
 		min-height: 40px;
@@ -542,6 +543,7 @@
 	}
 
 	.month-actions button,
+	.compact-item > button,
 	.task-actions button {
 		background: #eef2ed;
 		color: #111827;
@@ -615,7 +617,7 @@
 	}
 
 	.task-copy,
-	.compact-item div {
+	.compact-item > div:first-child {
 		display: grid;
 		gap: 4px;
 		min-width: 0;
@@ -625,6 +627,11 @@
 		display: flex;
 		align-items: flex-start;
 		gap: 8px;
+	}
+
+	.task-actions button:last-child {
+		width: 44px;
+		padding: 0;
 	}
 
 	.routine-block {
@@ -710,6 +717,16 @@
 	}
 
 	@media (max-width: 640px) {
+		.calendar-panel .panel-heading {
+			display: grid;
+			grid-template-columns: 1fr;
+		}
+
+		.month-actions {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+
 		.form-grid {
 			grid-template-columns: 1fr;
 		}
@@ -721,6 +738,11 @@
 		.task-list article,
 		.compact-item {
 			grid-template-columns: 1fr;
+		}
+
+		.compact-item > button,
+		.task-actions {
+			width: fit-content;
 		}
 	}
 </style>
