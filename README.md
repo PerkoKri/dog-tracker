@@ -1,140 +1,203 @@
-# DogTracker
+# Projektdokumentation - DogTracker
 
-DogTracker ist ein mobiler SvelteKit-Prototyp für Hundebesitzer:innen. Die App unterstützt einen klaren End-to-End-Workflow: Aktivitäten erfassen, speichern und direkt im Dashboard wiederfinden.
+## Inhaltsverzeichnis
 
-## Links
+1. [Ausgangslage](#1-ausgangslage)
+2. [Lösungsidee](#2-lösungsidee)
+3. [Vorgehen & Artefakte](#3-vorgehen--artefakte)
+    1. [Understand & Define](#31-understand--define)
+    2. [Sketch](#32-sketch)
+    3. [Decide](#33-decide)
+    4. [Prototype](#34-prototype)
+    5. [Validate](#35-validate)
+4. [Erweiterungen [Optional]](#4-erweiterungen-optional)
+5. [Projektorganisation [Optional]](#5-projektorganisation-optional)
+6. [KI-Deklaration](#6-ki-deklaration)
+7. [Anhang [Optional]](#7-anhang-optional)
 
-- Live-Demo: https://dog-tracker-kristian.netlify.app/
-- GitHub: https://github.com/PerkoKri/dog-tracker
-- Figma/Mockup: https://www.figma.com/site/oeVTCmei0b0H6m29yesxzv/DogTracker?node-id=0-3&t=sD8JXcT3QnVaDrEd-1
+> **Hinweis:** Massgeblich sind die im **Unterricht** und auf **Moodle** kommunizierten Anforderungen.
 
-## Hauptworkflow
+## 1. Ausgangslage
 
-1. Der Nutzer registriert sich oder loggt sich ein.
-2. Nach dem Login sieht der Nutzer ein persönliches Dashboard.
-3. Der Nutzer wählt einen Hund aus oder fügt einen neuen Hund hinzu.
-4. Danach wird die Aktivität gewählt, zum Beispiel Gassi, Futter oder Pflege.
-5. Im letzten Schritt werden Dauer/Menge, Uhrzeit und eine optionale Notiz erfasst.
-6. Die Aktivität wird in MongoDB gespeichert.
-7. Eine Erfolgsmeldung bestätigt die Speicherung.
-8. Das Dashboard und der Verlauf zeigen die aktualisierten Daten.
+- **Problem:** Hundebesitzer:innen oder Personen, die regelmässig auf einen Hund aufpassen, müssen alltägliche Aktivitäten wie Gassi gehen, Füttern, Pflege, Medikamente oder Arzttermine oft im Kopf behalten oder über mehrere Kanäle absprechen. Dadurch ist nicht immer klar, was bereits erledigt wurde.
+- **Ziele:** Ziel ist eine mobile Web-App, mit der Nutzer:innen nach dem Login zuerst ihren Hund erfassen und danach unterschiedliche Aktivitäten mit passenden Eingabefeldern dokumentieren können. Die wichtigsten Daten sollen übersichtlich angezeigt, gespeichert und bei Bedarf wieder gelöscht werden können.
+- **Primäre Zielgruppe:** Hundebesitzer:innen und Betreuungspersonen, die den Alltag eines oder mehrerer Hunde einfach dokumentieren möchten.
+- **Weitere Stakeholder [Optional]:** Dozierende, Mitstudierende im Usability-Test und Personen, die den Prototyp im Rahmen der Abgabe prüfen.
 
-## Test-Account
+## 2. Lösungsidee
 
-Für die Demo kann ein eigener Account registriert werden. Der Login-Screen ist mit folgenden Testdaten vorausgefüllt:
+- **Kernfunktionalität:** DogTracker unterstützt zwei zusammenhängende Workflows: Aktivitäten nachträglich erfassen und zukünftige Aufgaben planen. Nutzer:innen können sich registrieren, Hunde erfassen, Aktivitäten speichern, Erinnerungen planen, fällige Aufgaben abhaken und erledigte Erinnerungen automatisch im Verlauf dokumentieren.
+- **Mindestumfang:** Der Prototyp ist eine interaktive Web-App mit mehreren Bereichen, Login/Registrierung, Datenbankanbindung, persönlicher Hunde-Verwaltung, Erstellen und Löschen von Aktivitäten, Verlauf, Statistik, Netlify-Deployment, GitHub-Repository und dokumentierter Usability Evaluation.
+- **Erweiterung:** Die Erfassung unterscheidet zwischen Gassi, Futter, Pflege, Medikamenten und Arztterminen. Zusätzlich gibt es Anhänge für Fotos und Dokumente, einen Planer mit Kalender- und Tagesansicht, allgemeine Aufgaben, Erledigt-Funktion für kommende Aufgaben und Cloud-Speicher für die Hundeakte.
+- **Annahmen [Optional]:** Nutzer:innen möchten die App vor allem mobil und schnell bedienen. Der Ablauf muss deshalb kurz, verständlich und ohne komplexe Menüs funktionieren.
+- **Abgrenzung [Optional]:** Nicht Bestandteil des Prototyps sind Rollen wie Admin/User, native Push-Benachrichtigungen im Hintergrund, Synchronisation mit externen Kalendern, OCR-Auswertung von Dokumenten oder produktive Freigabe- und Rechteprozesse für einen realen Betrieb.
 
-```text
-E-Mail: demo@dogtracker.ch
-Passwort: demo123
-```
+## 3. Vorgehen & Artefakte
 
-## Funktionen
+### 3.1 Understand & Define
 
-- Registrierung und Login
-- Passwort-Hashing auf der Server-Seite
-- Persönliche Daten pro eingeloggtem User
-- Mobile Tagesübersicht für Milo
-- Kennzahlen für Gassi-Minuten, Fütterungen und letzte Aktivität
-- Hundeverwaltung mit Standardhunden, neuen Hunden und Löschen von Hunden
-- Dreistufige Schnellerfassung
-- Aktivitätstypen: Gassi, Futter und Pflege
-- Verlauf der letzten Einträge mit gezieltem Löschen einzelner Aktivitäten
-- Alle Aktivitäten des eingeloggten Users leeren
-- Persistenz über MongoDB mit Netlify Function `/api/activities`
-- Lokaler Fallback über `localStorage`, falls die API nicht erreichbar ist
-- Sichtbares Feedback beim Speichern und bei Offline-Fallback
-- Demo-Daten lokal zurücksetzen und Verlauf leeren
+- **Zielgruppenverständnis:** Die Zielgruppe braucht eine einfache Möglichkeit, Hunde und wiederkehrende Aktivitäten zu dokumentieren. Besonders wichtig ist, dass neue Nutzer:innen nicht mit vorhandenen Beispieldaten verwechselt werden, sondern zuerst ihren eigenen Hund erfassen.
+- **Wesentliche Erkenntnisse:**
+  - Der Hauptworkflow muss ohne Erklärung verständlich sein.
+  - Login und persönliche Daten müssen getrennt pro Nutzer:in funktionieren.
+  - Die Navigation soll klar zwischen Übersicht, Erfassung, Planer und Statistik unterscheiden.
+  - Ein neuer Account soll leer starten und zuerst zur Hunde-Erfassung auffordern.
 
-## Technische Umsetzung
+### 3.2 Sketch
 
-- SvelteKit mit Svelte-Komponenten
-- Komponentenstruktur:
-  - `AuthPanel.svelte`
-  - `Dashboard.svelte`
-  - `EntryForm.svelte`
-  - `Timeline.svelte`
-  - `BottomNav.svelte`
-- Netlify Deployment mit statischem Build
-- Netlify Function für API-Zugriffe
-- MongoDB Database: `dog-tracker`
-- MongoDB Collections: `users`, `dogs`, `activities`
+- **Variantenüberblick:** Zu Beginn wurde ein mobiler Ein-Screen-Prototyp angedacht. Danach wurde die Struktur in vier Hauptbereiche aufgeteilt: `Home`, `Erfassen`, `Planer` und `Statistik`.
+- **Skizzen:** Das Figma-Mockup diente als Ausgangspunkt für die mobile Gestaltung und den linearen Workflow. Die Umsetzung wurde im Prototyp weiterentwickelt, damit Login, Hunde-Erfassung und Aktivitätserfassung getrennt testbar sind.
 
-## Datenmodell
+### 3.3 Decide
 
-Eine Aktivität enthält:
+- **Gewählte Variante & Begründung:** Gewählt wurde eine mobile App-Struktur mit Bottom-Navigation. Diese Variante passt zur Nutzung unterwegs und macht den Workflow klarer: Home für Konto und fällige Aufgaben, Erfassen für vergangene Aktivitäten, Planer für kommende Aufgaben und Statistik für Verlauf und Auswertung.
+- **End-to-End-Ablauf:** Registrierung/Login -> erster Hund erfassen -> Aktivität erfassen -> Aktivität im Dashboard/Verlauf prüfen -> Aktivität löschen.
+- **Mockup:** Figma-Mockup: https://www.figma.com/site/oeVTCmei0b0H6m29yesxzv/DogTracker?node-id=0-3&t=sD8JXcT3QnVaDrEd-1
 
-- `userId`
-- `dogName`
-- `type`
-- `amount`
-- `time`
-- `note`
-- `createdAt`
+### 3.4 Prototype
 
-## Erfüllte Mindestanforderungen
+#### 3.4.1. Entwurf (Design)
 
-- Übersicht: persönliches Dashboard und Verlauf der Aktivitäten
-- Daten erfassen: Aktivität hinzufügen und Hunde hinzufügen
-- Daten löschen: einzelne Aktivitäten, alle Aktivitäten und Hunde löschen
-- Persistenz: MongoDB mit `users`, `dogs` und `activities`
-- Komponenten: Auth, Dashboard, Formular, Verlauf und Navigation sind getrennt
-- Deployment: Netlify Live-Demo
-- Git/GitHub: Repository ist verlinkt
+- **Informationsarchitektur:** Die App besteht aus einem Login-/Registrierungsbereich und drei Hauptbereichen nach dem Login:
+  - `Home`: persönliches Dashboard, fällige Erinnerungen, Kontoanzeige, Hunde verwalten
+  - `Erfassen`: Aktivität für einen ausgewählten Hund speichern, optional mit Foto oder Dokument als Anhang
+  - `Planer`: Kalender, Tagesansicht, To-dos und wiederkehrende Erinnerungen
+  - `Statistik`: Gesamtübersicht und Verlauf
+- **User Interface Design:** Die Oberfläche ist als mobile App gestaltet. Wiederkehrende Karten, klare Buttons und kurze Labels sollen die Bedienung erleichtern.
+- **Designentscheidungen:** Neue Nutzer:innen sehen keine automatisch angelegten Hunde mehr. Dadurch ist klar, dass zuerst ein eigener Hund erfasst werden muss. Der Button `Erfassen` führt direkt zum Formular für Aktivitäten, damit der zentrale Workflow nicht mit Hunde-Verwaltung vermischt wird.
+- **Screenshots der fertigen App:**
 
-## Designentscheidungen
+  ![Login und Registrierung](docs/screenshots/01-login.png)
+  Login und Registrierung als Einstieg in den persönlichen Bereich.
 
-Die Anwendung wurde als mobile App konzipiert, weil die Nutzung hauptsächlich unterwegs erfolgt, zum Beispiel beim Gassi gehen oder Füttern. Das Design ist bewusst einfach und reduziert gehalten, damit neue Aktivitäten schnell erfasst werden können.
+  ![Ersten Hund erfassen](docs/screenshots/02-erster-hund.png)
+  Neue Nutzer:innen starten ohne Beispielhunde und werden zuerst zur Hunde-Erfassung geführt.
 
-Die Navigation ist linear aufgebaut, da der Fokus auf einem klaren Hauptprozess liegt. Komplexe Menüs wurden vermieden. Die wichtigsten Informationen stehen direkt auf dem Startscreen, damit der aktuelle Status und die letzten Aktivitäten schnell sichtbar sind.
+  ![Hunde verwalten und Routinen](docs/screenshots/03-hund-verwalten.png)
+  Im Home-Bereich können Hunde hinzugefügt, ausgewählt und mit Routinen verwaltet werden.
 
-## Setup
+  ![Aktivität erfassen](docs/screenshots/04-aktivitaet-erfassen.png)
+  Über `Erfassen` wird eine Aktivität Schritt für Schritt eingetragen.
 
-```bash
-npm install
-```
+  ![Verlauf nach dem Speichern](docs/screenshots/05-verlauf-nach-speichern.png)
+  Gespeicherte Aktivitäten erscheinen direkt in der Tagesübersicht und im Verlauf.
 
-Für lokale Entwicklung mit MongoDB wird eine Umgebungsvariable benötigt:
+  ![Planer mit Kalender](docs/screenshots/06-planer-kalender.png)
+  Der Planer bündelt Kalender, Tagesansicht, Routinen und offene Aufgaben.
 
-```bash
-MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster.example.mongodb.net/
-```
+  ![Statistik](docs/screenshots/07-statistik.png)
+  Die Statistik zeigt Kennzahlen und die letzten Einträge des eingeloggten Accounts.
 
-Der echte Connection String wird nicht in den Code geschrieben, sondern lokal als `.env` und in Netlify als geheime Environment Variable gespeichert.
+#### 3.4.2. Umsetzung (Technik)
 
-## Entwicklung
+- **Technologie-Stack:** SvelteKit, Svelte, JavaScript/TypeScript, MongoDB, Netlify Functions, Netlify Blobs, Netlify Deployment.
+- **Tooling:** Visual Studio Code, GitHub, Netlify, MongoDB Atlas und KI-Unterstützung durch ChatGPT/Codex.
+- **Struktur & Komponenten:**
+  - `AuthPanel.svelte`: Login und Registrierung
+  - `DogManager.svelte`: Hunde anzeigen, hinzufügen und löschen
+  - `Dashboard.svelte`: Tagesübersicht und Kennzahlen
+  - `EntryForm.svelte`: dreistufiges Formular für Aktivitäten
+  - `PlannerPanel.svelte`: Kalender, Erinnerungen und Erledigt-Funktion
+  - `Timeline.svelte`: Verlauf mit Löschfunktion
+  - `StatsPanel.svelte`: Statistikansicht
+  - `BottomNav.svelte`: Navigation zwischen Home, Erfassen, Planer und Statistik
+- **Daten & Schnittstellen:** Die strukturierten Daten werden in MongoDB in der Datenbank `dog-tracker` gespeichert. Verwendete Collections sind `users`, `dogs`, `activities` und `reminders`. Hunde speichern mehrere Futterzeiten, mehrere Medikamente und ein Dossier mit Dokumenten. Dateien wie Fotos, PDFs oder Word-Dokumente werden getrennt davon in Netlify Blobs gespeichert. API-Endpunkte werden über Netlify Functions bereitgestellt:
+  - `/api/auth`
+  - `/api/dogs`
+  - `/api/activities`
+  - `/api/reminders`
+  - `/api/files`
+- **Externe Daten:** Für die finale Version wird keine zusätzliche Dritt-API im Kernworkflow benötigt. Die App konzentriert sich auf die direkte Planung, Dokumentation und Verwaltung der Hundedaten.
+- **Anhänge:** Aktivitäten können mit einem Foto oder Dokument gespeichert werden, z. B. Impfausweis, Tierarztrechnung, Medikamentenplan oder Foto. Die App lädt Anhänge über `/api/files` in den Cloud-Speicher hoch und speichert in MongoDB nur den Dateiverweis. Anhänge werden direkt im Verlauf angezeigt beziehungsweise als Datei geöffnet.
+- **Deployment:** https://dog-tracker-kristian.netlify.app/
+- **Besondere Entscheidungen:** Passwörter werden serverseitig gehasht. Aktivitäten und Hunde werden über `userId` dem eingeloggten Account zugeordnet. Als Fallback werden Aktivitäten im Browser gespeichert, falls die API kurzfristig nicht erreichbar ist.
 
-```bash
-npm run dev
-```
+### 3.5 Validate
 
-Danach öffnen:
+- **URL der getesteten Version:** https://dog-tracker-kristian.netlify.app/
+- **Ziele der Prüfung:** Ziel der Usability Evaluation war zu prüfen, ob Testpersonen den Hauptworkflow ohne Hilfe verstehen: Login/Registrierung, Hund hinzufügen, Aktivität über `Erfassen` speichern, Eintrag wiederfinden und Eintrag löschen.
+- **Vorgehen:** Die Evaluation wurde als moderierter, szenario-basierter Usability-Test vor Ort durchgeführt. Die Testpersonen erhielten die Aufgabe schriftlich und wurden während der Durchführung beobachtet. Rückfragen und Beobachtungen wurden protokolliert.
+- **Stichprobe:** Getestet wurde mit zwei Mitstudierenden, die den Prototyp nicht im Detail kannten.
+- **Aufgaben/Szenarien:**  
+  **Testaufgabe DogTracker:** Sie passen regelmässig auf Ihren Hund auf und möchten den Alltag besser dokumentieren. Heute möchten Sie die App zum ersten Mal verwenden, Ihren Hund erfassen und danach eine Aktivität speichern. Erstellen Sie ein Konto oder loggen Sie sich ein. Fügen Sie anschliessend Ihren Hund hinzu. Erfassen Sie danach eine Aktivität für diesen Hund, zum Beispiel einen Spaziergang mit Uhrzeit, Dauer und einer kurzen Notiz. Kontrollieren Sie anschliessend, ob die Aktivität in der Übersicht oder im Verlauf sichtbar ist. Löschen Sie danach den erfassten Eintrag wieder.
+- **Kennzahlen & Beobachtungen:**
+  - Erfolgsquote: 2 von 2 Testpersonen konnten die Aufgabe abschliessen.
+  - Login/Registrierung wurde gefunden und erfolgreich verwendet.
+  - Das Hinzufügen eines Hundes war grundsätzlich verständlich.
+  - Der Button `Erfassen` wurde als Einstieg für neue Aktivitäten verstanden.
+  - Die gespeicherte Aktivität wurde im Verlauf wiedergefunden.
+  - Die Löschfunktion wurde gefunden und erfolgreich genutzt.
+  - In der ersten getesteten Version war unklar, warum neue Nutzer:innen bereits Hunde sahen. Dies wurde als wichtiges Usability-Problem identifiziert.
+- **Zusammenfassung der Resultate:** Die Evaluation zeigte, dass der zentrale Workflow grundsätzlich verständlich ist. Besonders wichtig war aber, dass neue Nutzer:innen nicht automatisch Beispielhunde sehen dürfen. Die Navigation mit `Home`, `Erfassen` und `Statistik` wurde als sinnvoll bestätigt, da sie die Aufgabenbereiche klar trennt.
+- **Abgeleitete Verbesserungen:**
+  - Neue Accounts starten ohne automatisch angelegte Hunde.
+  - Nach dem Login wird zuerst zur Erfassung des ersten Hundes aufgefordert.
+  - Die Hunde-Verwaltung wurde auf `Home` platziert.
+  - Die Aktivitätserfassung wurde klar in den Bereich `Erfassen` verschoben.
+  - Der Verlauf und die Statistik wurden in den Bereich `Statistik` ausgelagert.
 
-```text
-http://127.0.0.1:5173/
-```
+## 4. Erweiterungen [Optional]
 
-## Build
+### 4.1 Login und persönliche Daten
 
-```bash
-npm run build
-```
+- **Beschreibung & Nutzen:** Nutzer:innen können sich registrieren und einloggen. Hunde und Aktivitäten werden pro Account gespeichert.
+- **Wo umgesetzt:** Frontend in `AuthPanel.svelte`, Backend in `netlify/functions/auth.mts`, Datenbank in der Collection `users`.
+- **Referenz:** Beschrieben in Kapitel 3.4.2.
+- **Aus Evaluation abgeleitet?:** Teilweise. Die Trennung der Daten pro Nutzer:in wurde durch die Evaluation als wichtig bestätigt.
 
-## Deployment
+### 4.2 Hunde-Verwaltung
 
-Das Projekt ist für Netlify vorbereitet:
+- **Beschreibung & Nutzen:** Nutzer:innen können mehrere Hunde hinzufügen und löschen. Neue Accounts starten ohne Hunde und müssen zuerst einen eigenen Hund erfassen. Beim Anlegen können bereits Futterzeiten, Medikamente, Gassi-Zeit und Dossier-Dateien ergänzt werden.
+- **Wo umgesetzt:** Frontend in `DogManager.svelte`, Backend in `netlify/functions/dogs.mts`, Datenbank in der Collection `dogs`.
+- **Referenz:** Beschrieben in Kapitel 3.4.1 und 3.5.
+- **Aus Evaluation abgeleitet?:** Ja. Die automatische Anzeige von Beispielhunden wurde entfernt.
 
-- Build Command: `npm run build`
-- Publish Directory: `build`
-- Function Directory: `netlify/functions`
-- Benötigte Environment Variable: `MONGODB_URI`
-- Optionale Environment Variable: `AUTH_SECRET`
+### 4.3 Statistik und Verlauf
 
-## Bekannte Limitationen
+- **Beschreibung & Nutzen:** Der Bereich `Statistik` zeigt Kennzahlen und den Verlauf der Aktivitäten. Einzelne Einträge können gelöscht werden. Der Verlauf unterstützt auch das Wiederfinden von Anhängen.
+- **Wo umgesetzt:** Frontend in `StatsPanel.svelte` und `Timeline.svelte`, Backend in `netlify/functions/activities.mts`.
+- **Referenz:** Beschrieben in Kapitel 3.4.2.
+- **Aus Evaluation abgeleitet?:** Teilweise. Der Verlauf unterstützt das Wiederfinden und Löschen gespeicherter Aktivitäten.
 
-- Es gibt Login, aber noch keine Rollen wie Admin/User.
-- Der Fokus liegt auf einem funktionierenden Hauptworkflow für einzelne Hundebesitzer:innen.
-- Wenn MongoDB nicht erreichbar ist, nutzt die App bewusst einen lokalen Fallback im Browser.
+### 4.4 Planer, Erinnerungen und Kalender
 
-## KI-Deklaration
+- **Beschreibung & Nutzen:** Nutzer:innen können zukünftige Aufgaben wie Futter, Medikamente, Arzttermine oder allgemeine To-dos planen. Fällige Erinnerungen erscheinen in der App, können als erledigt markiert werden und werden danach im Verlauf dokumentiert. Der Planer trennt Kalender, Tagesansicht und offene Aufgaben. Bei der Hunde-Erfassung können Routinewerte wie mehrere Futterzeiten, Medikamente oder Gassi-Zeit direkt angegeben werden.
+- **Wo umgesetzt:** Frontend in `PlannerPanel.svelte` und `+page.svelte`, Backend in `netlify/functions/reminders.mts`, Datenbank in der Collection `reminders`.
+- **Externe Daten:** Der Planer arbeitet direkt mit den gespeicherten Aufgaben und Erinnerungen. Zusätzliche Dritt-APIs sind dafür nicht nötig.
+- **Aus Evaluation abgeleitet?:** Teilweise. Die App wurde damit von einer reinen Nach-Erfassung zu einer Kombination aus Dokumentation und vorausschauender Planung erweitert.
 
-KI wurde unterstützend für Konzeptschärfung, UI-Struktur, Svelte-Implementierung, Komponentenaufteilung, Netlify/MongoDB-Anbindung und README-Formulierung eingesetzt. Die Inhalte wurden auf den DogTracker-Kontext und das vorhandene Mockup angepasst.
+### 4.5 Anhänge und Hundeakte
+
+- **Beschreibung & Nutzen:** Aktivitäten können mit einem Anhang gespeichert werden. Dadurch lassen sich Tierarztberichte, Rechnungen, Medikamentenpläne, Impfausweis-Ausschnitte oder Fotos direkt beim Ereignis ablegen. Zusätzlich lassen sich bereits beim Erstellen eines Hundes Dossier-Dateien speichern.
+- **Wo umgesetzt:** Frontend in `EntryForm.svelte` und `Timeline.svelte`, Backend in `netlify/functions/activities.mts` und `netlify/functions/files.mts`, Cloud-Speicher über Netlify Blobs.
+- **Aus Evaluation abgeleitet?:** Als fachliche Erweiterung ergänzt, damit die App stärker wie eine echte Hundeakte funktioniert.
+
+## 5. Projektorganisation [Optional]
+
+- **Autor:** Kristian Perkovic
+- **Repository & Struktur:** https://github.com/PerkoKri/dog-tracker
+- **Issue-Management:** Die Weiterentwicklung erfolgte iterativ anhand der Anforderungen aus den Übungen und der Usability-Beobachtungen. Probleme wurden direkt im Prototyp priorisiert und umgesetzt.
+- **Commit-Praxis:** Änderungen wurden mit sprechenden Commit-Messages versioniert, z. B. Login, Löschaktionen und Anpassungen am Workflow.
+
+## 6. KI-Deklaration
+
+### 6.1 KI-Tools
+
+- **Eingesetzte Tools:** ChatGPT/Codex von OpenAI.
+- **Zweck & Umfang:** KI wurde für Konzeptschärfung, Strukturierung der README, Formulierung der Usability-Testaufgabe, Code-Vorschläge, Debugging, Svelte-Komponenten, Netlify/MongoDB-Anbindung und Refactoring eingesetzt.
+- **Eigene Leistung (Abgrenzung):** Die Projektidee, die fachliche Ausrichtung auf DogTracker, die Auswahl des Funktionsumfangs, das Testfeedback und finale Entscheidungen wurden durch den Projektverfasser bestimmt. KI-Vorschläge wurden geprüft, angepasst und in den Projektkontext übertragen.
+
+### 6.2 Prompt-Vorgehen
+
+Die Arbeit mit KI erfolgte iterativ. Zuerst wurden Anforderungen und bestehende Projektdateien analysiert. Danach wurden einzelne Aufgaben formuliert, z. B. Login ergänzen, MongoDB anbinden, Navigation trennen oder README nach Vorlage strukturieren. Generierte Vorschläge wurden getestet, überarbeitet und anhand der Projektanforderungen angepasst.
+
+### 6.3 Reflexion
+
+Der KI-Einsatz half besonders bei der schnellen technischen Umsetzung und beim Strukturieren der Dokumentation. Gleichzeitig mussten Vorschläge kritisch geprüft werden, da nicht jede erste Lösung zur Aufgabenstellung oder zum gewünschten Workflow passte. Besonders bei Login, Datenpersistenz und Usability war manuelle Kontrolle wichtig.
+
+## 7. Anhang [Optional]
+
+- **Live-App:** https://dog-tracker-kristian.netlify.app/
+- **GitHub:** https://github.com/PerkoKri/dog-tracker
+- **Figma-Mockup:** https://www.figma.com/site/oeVTCmei0b0H6m29yesxzv/DogTracker?node-id=0-3&t=sD8JXcT3QnVaDrEd-1
+- **Zugangsdaten:** Kein fixer Testaccount notwendig. Neue Nutzer:innen können direkt einen Account registrieren und danach ihren ersten Hund erfassen.

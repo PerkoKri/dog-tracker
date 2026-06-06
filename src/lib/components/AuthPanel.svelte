@@ -2,8 +2,8 @@
 	let {
 		authMode = $bindable('login'),
 		name = $bindable(''),
-		email = $bindable('demo@dogtracker.ch'),
-		password = $bindable('demo123'),
+		email = $bindable(''),
+		password = $bindable(''),
 		isAuthenticating = false,
 		authMessage = '',
 		onSubmit
@@ -15,8 +15,8 @@
 		<p class="eyebrow">DogTracker</p>
 		<h1 id="auth-title">Aktivitäten für deinen Hund im Blick.</h1>
 		<p>
-			Melde dich an, erfasse Gassi, Futter und Pflege und sieh alle Einträge im persönlichen
-			Dashboard.
+			Melde dich an, erfasse Gassi, Futter, Pflege, Medikamente und Arzttermine und sieh alle
+			Einträge im persönlichen Dashboard.
 		</p>
 	</section>
 
@@ -83,21 +83,20 @@
 
 	.auth-hero,
 	.auth-panel {
-		border: 1px solid #e3d8c9;
-		border-radius: 8px;
-		background: #fffaf2;
-		box-shadow: 0 18px 44px rgba(40, 33, 24, 0.12);
+		border: 1px solid #dfe4dd;
+		border-radius: 18px;
+		box-shadow: 0 18px 44px rgba(16, 24, 40, 0.08);
 		padding: 22px;
 	}
 
 	.auth-hero {
-		background: #28756c;
+		background: linear-gradient(145deg, #1f5f57 0%, #2c6f67 100%);
 		color: white;
 	}
 
 	.eyebrow {
 		margin: 0 0 8px;
-		color: #d9efe7;
+		color: #cde8e1;
 		font-size: 0.76rem;
 		font-weight: 800;
 		letter-spacing: 0;
@@ -126,23 +125,24 @@
 		grid-template-columns: 1fr 1fr;
 		gap: 6px;
 		margin-bottom: 18px;
-		border-radius: 8px;
-		background: #efe7dc;
+		border-radius: 999px;
+		background: #edf3ef;
 		padding: 5px;
 	}
 
 	.mode-switch button {
 		min-height: 38px;
 		border: 0;
-		border-radius: 6px;
+		border-radius: 999px;
 		background: transparent;
-		color: #6a716c;
+		color: #5f6b66;
 		font-weight: 900;
 	}
 
 	.mode-switch .active {
 		background: white;
-		color: #18544d;
+		color: #1f5f57;
+		box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08);
 	}
 
 	form {
@@ -160,8 +160,8 @@
 
 	input {
 		width: 100%;
-		border: 1px solid #e3d8c9;
-		border-radius: 8px;
+		border: 1px solid #dfe4dd;
+		border-radius: 12px;
 		background: #ffffff;
 		color: #17211b;
 		padding: 12px;
@@ -169,15 +169,15 @@
 	}
 
 	input:focus {
-		border-color: #28756c;
-		box-shadow: 0 0 0 3px rgba(40, 117, 108, 0.14);
+		border-color: #2c6f67;
+		box-shadow: 0 0 0 3px rgba(44, 111, 103, 0.12);
 	}
 
 	.auth-message {
 		margin: 0;
-		border-radius: 8px;
-		background: #fff0df;
-		color: #6f4d12;
+		border-radius: 12px;
+		background: #fff4e6;
+		color: #86532d;
 		padding: 10px 12px;
 		font-size: 0.86rem;
 		line-height: 1.35;
@@ -186,8 +186,8 @@
 	.primary-button {
 		min-height: 48px;
 		border: 0;
-		border-radius: 8px;
-		background: #28756c;
+		border-radius: 12px;
+		background: #2c6f67;
 		color: white;
 		font-weight: 900;
 	}

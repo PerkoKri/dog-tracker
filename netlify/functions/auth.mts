@@ -37,7 +37,6 @@ export default async (req: Request, _context: Context) => {
 		const action = url.searchParams.get('action');
 		const db = await getDatabase();
 		const users = db.collection('users');
-		const dogs = db.collection('dogs');
 
 		if (req.method === 'GET') {
 			const authUser = getAuthUser(req);
@@ -68,11 +67,6 @@ export default async (req: Request, _context: Context) => {
 			};
 			const result = await users.insertOne(user);
 			const authUser = { id: result.insertedId.toString(), email: user.email, name: user.name };
-
-			await dogs.insertMany([
-				{ userId: authUser.id, name: 'Milo', breed: 'Labrador Mix', createdAt: Date.now() },
-				{ userId: authUser.id, name: 'Luna', breed: 'Border Collie', createdAt: Date.now() }
-			]);
 
 			return json({ user: authUser, token: createToken(authUser) }, 201);
 		}

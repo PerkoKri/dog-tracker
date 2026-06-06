@@ -1,13 +1,22 @@
 <script>
-	let { latestActivity, walkMinutes, foodCount, formatActivity, isLoading = false } = $props();
+	let {
+		latestActivity,
+		walkMinutes,
+		foodCount,
+		formatActivity,
+		isLoading = false,
+		hasDogs = true
+	} = $props();
 </script>
 
 <section class="hero-panel" aria-label="Tagesübersicht">
 	<div class="hero-copy">
-		<span class="status-pill">{isLoading ? 'Lade Daten' : 'Alles im Blick'}</span>
+		<span class="status-pill">{isLoading ? 'Lade Daten' : hasDogs ? 'Alles im Blick' : 'Start'}</span>
 		<h2>
 			{#if isLoading}
 				Die Aktivitäten werden geladen.
+			{:else if !hasDogs}
+				Erfasse zuerst deinen Hund.
 			{:else if latestActivity}
 				{latestActivity.dogName} wurde zuletzt mit "{latestActivity.type}" erfasst.
 			{:else}
@@ -15,7 +24,9 @@
 			{/if}
 		</h2>
 		<p>
-			{#if latestActivity}
+			{#if !hasDogs}
+				Füge auf Home deinen ersten Hund hinzu. Danach kannst du Aktivitäten erfassen.
+			{:else if latestActivity}
 				{formatActivity(latestActivity)}{latestActivity.note ? ` · ${latestActivity.note}` : ''}
 			{:else}
 				Starte mit einer schnellen Aktivität.
@@ -64,10 +75,10 @@
 <style>
 	.hero-panel,
 	.stat-card {
-		border: 1px solid #e3d8c9;
-		border-radius: 8px;
-		background: #fffaf2;
-		box-shadow: 0 18px 44px rgba(40, 33, 24, 0.12);
+		border: 1px solid #dfe4dd;
+		border-radius: 16px;
+		background: #ffffff;
+		box-shadow: 0 16px 40px rgba(16, 24, 40, 0.08);
 	}
 
 	.hero-panel {
@@ -77,6 +88,7 @@
 		gap: 12px;
 		overflow: hidden;
 		padding: 20px;
+		background: linear-gradient(145deg, #ffffff 0%, #f4faf7 100%);
 	}
 
 	.hero-copy {
@@ -89,8 +101,8 @@
 	.status-pill {
 		width: fit-content;
 		border-radius: 999px;
-		background: #e6f1ec;
-		color: #18544d;
+		background: #eef6f3;
+		color: #1f5f57;
 		font-size: 0.78rem;
 		font-weight: 800;
 		padding: 7px 10px;
@@ -109,7 +121,7 @@
 
 	p {
 		margin-bottom: 0;
-		color: #6a716c;
+		color: #66707a;
 		line-height: 1.45;
 	}
 
@@ -124,22 +136,22 @@
 	}
 
 	.sun {
-		fill: #e6bd61;
+		fill: #e0b95d;
 	}
 
 	.ground {
-		fill: #a9c4a5;
+		fill: #b8cbb5;
 	}
 
 	.body,
 	.head,
 	.leg {
-		fill: #8c5b3f;
+		fill: #8f6650;
 	}
 
 	.ear,
 	.snout {
-		fill: #c98863;
+		fill: #c98f6d;
 	}
 
 	.nose,
@@ -169,7 +181,7 @@
 
 	.stat-card span {
 		display: block;
-		color: #6a716c;
+		color: #66707a;
 		font-size: 0.78rem;
 		line-height: 1.25;
 	}

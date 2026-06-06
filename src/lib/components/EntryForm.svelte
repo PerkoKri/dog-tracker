@@ -1,23 +1,125 @@
 <script>
+	import FoodFields from '$lib/components/fields/FoodFields.svelte';
+	import MedicationFields from '$lib/components/fields/MedicationFields.svelte';
+	import WalkFields from '$lib/components/fields/WalkFields.svelte';
+
 	let {
 		currentStep = $bindable(1),
-		dogName = $bindable('Milo'),
+		dogName = $bindable(''),
 		dogs = [],
-		newDogName = $bindable(''),
 		type = $bindable('Gassi'),
 		amount = $bindable(25),
+		activityDate = $bindable(''),
 		time = $bindable(''),
 		note = $bindable(''),
+		routineTitle = $bindable(''),
+		routineUnitPreset = $bindable('Minuten'),
+		routineUnitCustom = $bindable(''),
+		careType = $bindable('Fellpflege'),
+		vetReason = $bindable(''),
+		vetClinic = $bindable(''),
+		attachmentName = $bindable(''),
+		attachmentType = $bindable(''),
+		attachmentData = $bindable(''),
+		attachmentSize = $bindable(0),
 		isSaving = false,
 		successMessage = '',
 		setStep,
 		updateAmountForType,
-		onAddDog,
-		onDeleteDog,
 		onSave
 	} = $props();
 
-	let selectedDog = $derived(dogs.find((dog) => dog.name === dogName));
+	const activityOptions = [
+	{
+		value: 'Gassi',
+		label: 'Gassi',
+		help: 'Uhrzeit, Dauer und Dauer-Einheit.',
+		unit: 'Minuten'
+	},
+	{
+		value: 'Futter',
+		label: 'Futter',
+		help: 'Titel, Uhrzeit, Menge und Einheit.',
+		unit: 'Portion'
+	},
+	{
+		value: 'Pflege',
+		label: 'Pflege',
+		help: 'Pflegeart und Dauer in Minuten.',
+		unit: 'Minuten'
+	},
+	{
+		value: 'Medikament',
+		label: 'Medikament',
+		help: 'Name, Uhrzeit, Dosis und Einheit.',
+		unit: 'Tablette'
+	},
+	{
+		value: 'Arzt',
+		label: 'Arzt',
+		help: 'Termin oder Besuch beim Tierarzt.',
+		unit: ''
+	}
+	];
+
+	let selectedOption = $derived(
+		activityOptions.find((option) => option.value === type) ?? activityOptions[0]
+	);
+	let usesRoutineFields = $derived(['Gassi', 'Futter', 'Medikament'].includes(type));
+	let endTime = $derived(type === 'Pflege' ? addMinutes(time, Number(amount || 0)) : '');
+	let attachmentMessage = $state('');
+
+	function addMinutes(value, minutes) {
+		const match = /^(\d{2}):(\d{2})$/.exec(value || '');
+		if (!match || !Number.isFinite(minutes)) return '';
+
+		const total = Number(match[1]) * 60 + Number(match[2]) + minutes;
+		const normalized = ((Math.round(total) % 1440) + 1440) % 1440;
+		const hours = String(Math.floor(normalized / 60)).padStart(2, '0');
+		const mins = String(normalized % 60).padStart(2, '0');
+		return `${hours}:${mins}`;
+	}
+
+	function formatFileSize(size) {
+		if (!size) return '';
+		if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+		return `${(size / 1024 / 1024).toFixed(1)} MB`;
+	}
+
+	function clearAttachment() {
+		attachmentName = '';
+		attachmentType = '';
+		attachmentData = '';
+		attachmentSize = 0;
+		attachmentMessage = '';
+	}
+
+	function handleAttachment(event) {
+		const file = event.currentTarget.files?.[0];
+		attachmentMessage = '';
+		if (!file) return;
+
+		const maxSize = 1024 * 1024 * 3;
+		if (file.size > maxSize) {
+			clearAttachment();
+			attachmentMessage = 'Bitte maximal 3 MB hochladen.';
+			event.currentTarget.value = '';
+			return;
+		}
+
+		const reader = new FileReader();
+		reader.onload = () => {
+			attachmentName = file.name;
+			attachmentType = file.type || 'application/octet-stream';
+			attachmentSize = file.size;
+			attachmentData = String(reader.result || '');
+		};
+		reader.onerror = () => {
+			clearAttachment();
+			attachmentMessage = 'Anhang konnte nicht gelesen werden.';
+		};
+		reader.readAsDataURL(file);
+	}
 </script>
 
 <section class="entry-panel" aria-labelledby="entry-title">
@@ -46,33 +148,25 @@
 					<option value={dog.name}>{dog.name}</option>
 				{/each}
 			</select>
-
-			<div class="add-dog-row">
-				<input bind:value={newDogName} placeholder="Neuen Hund hinzufügen" />
-				<button class="secondary-button" type="button" onclick={onAddDog}>+</button>
-			</div>
-
-			{#if selectedDog && dogs.length > 1}
-				<button class="danger-button" type="button" onclick={() => onDeleteDog(selectedDog)}>
-					Ausgewählten Hund löschen
-				</button>
-			{/if}
 		{/if}
 
 		{#if currentStep === 2}
 			<fieldset>
 				<legend>Was wurde gemacht?</legend>
 				<div class="segmented">
-					{#each ['Gassi', 'Futter', 'Pflege'] as option}
+					{#each activityOptions as option}
 						<label>
 							<input
 								type="radio"
 								name="type"
-								value={option}
-								checked={type === option}
-								onchange={() => updateAmountForType(option)}
+								value={option.value}
+								checked={type === option.value}
+								onchange={() => updateAmountForType(option.value)}
 							/>
-							<span>{option}</span>
+							<span>
+								<strong>{option.label}</strong>
+								<small>{option.help}</small>
+							</span>
 						</label>
 					{/each}
 				</div>
@@ -80,20 +174,104 @@
 		{/if}
 
 		{#if currentStep === 3}
+			<div class="type-hint">
+				<strong>{selectedOption.label}</strong>
+				<span>{selectedOption.help}</span>
+			</div>
+
 			<div class="form-grid">
 				<label>
-					Dauer / Menge
-					<input inputmode="numeric" bind:value={amount} />
+					Datum
+					<input type="date" bind:value={activityDate} />
+				</label>
+				{#if !usesRoutineFields}
+					<label>
+						Uhrzeit
+						<input type="time" bind:value={time} />
+					</label>
+				{/if}
+			</div>
+
+			{#if type === 'Futter'}
+				<FoodFields
+					bind:title={routineTitle}
+					bind:time={time}
+					bind:amount={amount}
+					bind:unitPreset={routineUnitPreset}
+					bind:unitCustom={routineUnitCustom}
+				/>
+			{:else if type === 'Medikament'}
+				<MedicationFields
+					bind:title={routineTitle}
+					bind:time={time}
+					bind:amount={amount}
+					bind:unitPreset={routineUnitPreset}
+					bind:unitCustom={routineUnitCustom}
+				/>
+			{:else if type === 'Gassi'}
+				<WalkFields bind:time={time} bind:amount={amount} bind:unitPreset={routineUnitPreset} />
+			{:else if type === 'Pflege'}
+				<div class="form-grid">
+					<label>
+						Dauer (Minuten)
+						<input
+							type="number"
+							inputmode="decimal"
+							min="1"
+							step="5"
+							bind:value={amount}
+						/>
+					</label>
+					<label>
+						Pflegeart
+						<select bind:value={careType}>
+							<option>Fellpflege</option>
+							<option>Baden</option>
+							<option>Krallen</option>
+							<option>Zähne</option>
+							<option>Ohren</option>
+						</select>
+					</label>
+				</div>
+				{#if endTime}
+					<p class="preview-note">Von {time} bis {endTime} · {amount} Minuten</p>
+				{/if}
+			{:else if type === 'Arzt'}
+				<label>
+					Grund / Termin
+					<input bind:value={vetReason} placeholder="z. B. Impfung" />
 				</label>
 				<label>
-					Uhrzeit
-					<input inputmode="numeric" placeholder="HH:MM" bind:value={time} />
+					Tierarzt / Ort
+					<input bind:value={vetClinic} placeholder="z. B. Tierarztpraxis" />
 				</label>
-			</div>
+			{/if}
+
 			<label>
 				Notiz
 				<textarea bind:value={note} rows="3" placeholder="z. B. ruhig, verspielt, wenig Hunger"></textarea>
 			</label>
+
+			<label>
+				Anhang zur Hundeakte
+				<input
+					type="file"
+					accept="image/*,.pdf,.txt,.doc,.docx"
+					onchange={handleAttachment}
+				/>
+			</label>
+			{#if attachmentMessage}
+				<p class="attachment-warning">{attachmentMessage}</p>
+			{/if}
+			{#if attachmentName}
+				<div class="attachment-card">
+					<div>
+						<strong>{attachmentName}</strong>
+						<span>{attachmentType || 'Datei'} · {formatFileSize(attachmentSize)}</span>
+					</div>
+					<button type="button" onclick={clearAttachment}>Entfernen</button>
+				</div>
+			{/if}
 		{/if}
 
 		<div class="form-actions">
@@ -108,7 +286,7 @@
 			{#if currentStep < 3}
 				<button class="primary-button" type="button" onclick={() => setStep(currentStep + 1)}>Weiter</button>
 			{:else}
-				<button class="primary-button" type="submit" disabled={isSaving}>
+				<button class="primary-button" type="button" disabled={isSaving} onclick={onSave}>
 					{isSaving ? 'Speichert...' : 'Speichern'}
 				</button>
 			{/if}
@@ -136,7 +314,7 @@
 
 	.eyebrow {
 		margin: 0 0 4px;
-		color: #28756c;
+		color: #2c6f67;
 		font-size: 0.76rem;
 		font-weight: 800;
 		letter-spacing: 0;
@@ -152,21 +330,54 @@
 	.step-indicator {
 		width: fit-content;
 		border-radius: 999px;
-		background: #e6f1ec;
-		color: #18544d;
+		background: #eef6f3;
+		color: #1f5f57;
 		font-size: 0.78rem;
 		font-weight: 800;
 		padding: 7px 10px;
+		white-space: nowrap;
+	}
+
+	.success-note,
+	.preview-note,
+	.type-hint,
+	.attachment-warning {
+		border-radius: 8px;
+		font-size: 0.86rem;
+		line-height: 1.35;
 	}
 
 	.success-note {
 		margin: 14px 0 0;
-		border-radius: 8px;
-		background: #e6f1ec;
-		color: #18544d;
+		background: #eef6f3;
+		color: #1f5f57;
 		padding: 10px 12px;
-		font-size: 0.86rem;
 		font-weight: 700;
+	}
+
+	.preview-note,
+	.type-hint {
+		margin: 0 0 12px;
+		border: 1px solid #dfe4dd;
+		background: #ffffff;
+		color: #4d5b52;
+		padding: 10px 12px;
+	}
+
+	.type-hint {
+		display: grid;
+		gap: 3px;
+	}
+
+	.type-hint strong {
+		color: #17211b;
+	}
+
+	.attachment-warning {
+		margin: 0 0 12px;
+		background: #fff4e6;
+		color: #86532d;
+		padding: 10px 12px;
 	}
 
 	form {
@@ -186,8 +397,8 @@
 	input,
 	textarea {
 		width: 100%;
-		border: 1px solid #e3d8c9;
-		border-radius: 8px;
+		border: 1px solid #dfe4dd;
+		border-radius: 12px;
 		background: #ffffff;
 		color: #17211b;
 		padding: 12px;
@@ -197,8 +408,8 @@
 	select:focus,
 	input:focus,
 	textarea:focus {
-		border-color: #28756c;
-		box-shadow: 0 0 0 3px rgba(40, 117, 108, 0.14);
+		border-color: #2c6f67;
+		box-shadow: 0 0 0 3px rgba(44, 111, 103, 0.12);
 	}
 
 	fieldset {
@@ -209,7 +420,7 @@
 
 	.segmented {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 8px;
 	}
 
@@ -219,20 +430,30 @@
 	}
 
 	.segmented span {
-		min-height: 82px;
-		display: grid;
-		place-items: center;
-		border: 1px solid #e3d8c9;
-		border-radius: 8px;
+		min-height: 96px;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 5px;
+		border: 1px solid #dfe4dd;
+		border-radius: 12px;
 		background: #ffffff;
-		color: #6a716c;
+		color: #66707a;
+		padding: 10px;
 		font-weight: 800;
 	}
 
+	.segmented small {
+		color: #66707a;
+		font-size: 0.72rem;
+		font-weight: 650;
+		line-height: 1.25;
+	}
+
 	.segmented input:checked + span {
-		border-color: #28756c;
-		background: #e6f1ec;
-		color: #18544d;
+		border-color: #2c6f67;
+		background: #eef6f3;
+		color: #1f5f57;
 	}
 
 	.form-grid {
@@ -241,15 +462,40 @@
 		gap: 10px;
 	}
 
-	.add-dog-row {
-		display: grid;
-		grid-template-columns: 1fr 46px;
-		gap: 8px;
-		margin-top: 10px;
-	}
-
 	textarea {
 		resize: vertical;
+	}
+
+	.attachment-card {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		align-items: center;
+		gap: 10px;
+		border: 1px solid #dfe4dd;
+		border-radius: 12px;
+		background: #ffffff;
+		padding: 10px 12px;
+	}
+
+	.attachment-card strong,
+	.attachment-card span {
+		display: block;
+	}
+
+	.attachment-card span {
+		margin-top: 3px;
+		color: #66707a;
+		font-size: 0.78rem;
+	}
+
+	.attachment-card button {
+		min-height: 38px;
+		border: 0;
+		border-radius: 12px;
+		background: #f7dfd8;
+		color: #8a2b18;
+		padding: 0 12px;
+		font-weight: 900;
 	}
 
 	.form-actions {
@@ -257,17 +503,16 @@
 	}
 
 	.primary-button,
-	.secondary-button,
-	.danger-button {
+	.secondary-button {
 		min-height: 46px;
 		border: 0;
-		border-radius: 8px;
+		border-radius: 12px;
 		padding: 0 18px;
 		font-weight: 900;
 	}
 
 	.primary-button {
-		background: #28756c;
+		background: #2c6f67;
 		color: white;
 	}
 
@@ -277,15 +522,8 @@
 	}
 
 	.secondary-button {
-		background: #efe7dc;
+		background: #eef2ed;
 		color: #17211b;
-	}
-
-	.danger-button {
-		width: 100%;
-		margin-top: 10px;
-		background: #f7dfd8;
-		color: #8a2b18;
 	}
 
 	.invisible {

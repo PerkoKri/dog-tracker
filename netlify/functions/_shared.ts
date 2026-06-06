@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { getDeployStore, getStore } from '@netlify/blobs';
 import { MongoClient, ObjectId } from 'mongodb';
 
 declare const Netlify: {
@@ -12,6 +13,7 @@ declare const process: {
 };
 
 let clientPromise: Promise<MongoClient> | undefined;
+const fileStoreName = 'dogtracker-files';
 
 export type AuthUser = {
 	id: string;
@@ -71,6 +73,12 @@ function sign(value: string) {
 	return createHmac('sha256', secret).update(value).digest('base64url');
 }
 
+function safeCompare(left: string, right: string) {
+	const leftBuffer = Buffer.from(left);
+	const rightBuffer = Buffer.from(right);
+	return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
 export function createToken(user: AuthUser) {
 	const payload = base64url(JSON.stringify({ ...user, exp: Date.now() + 1000 * 60 * 60 * 24 * 7 }));
 	return `${payload}.${sign(payload)}`;
@@ -80,7 +88,7 @@ export function verifyToken(token: string | null) {
 	if (!token) return null;
 
 	const [payload, signature] = token.split('.');
-	if (!payload || !signature || sign(payload) !== signature) return null;
+	if (!payload || !signature || !safeCompare(sign(payload), signature)) return null;
 
 	try {
 		const user = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as AuthUser & {
@@ -101,4 +109,42 @@ export function getAuthUser(req: Request) {
 
 export function toObjectId(id: string) {
 	return new ObjectId(id);
+}
+
+export function getFileStore() {
+	const options = { consistency: 'strong' as const };
+	return getEnv('CONTEXT') === 'production'
+		? getStore(fileStoreName, options)
+		: getDeployStore(fileStoreName, options);
+}
+
+export function createFileSignature(key: string, userId: string) {
+	return sign(`${userId}:${key}`);
+}
+
+export function verifyFileSignature(key: string, userId: string, signature: string | null) {
+	return Boolean(signature) && safeCompare(createFileSignature(key, userId), signature);
+}
+
+export function fileUrl(key: string, userId: string) {
+	const params = new URLSearchParams({
+		key,
+		signature: createFileSignature(key, userId)
+	});
+	return `/api/files?${params.toString()}`;
+}
+
+export async function deleteCloudFile(key: string | undefined, userId: string) {
+	if (!key) return;
+
+	try {
+		const store = getFileStore();
+		const metadata = await store.getMetadata(key, { consistency: 'strong' });
+		const ownerId = metadata?.metadata?.userId;
+		if (ownerId === userId) {
+			await store.delete(key);
+		}
+	} catch {
+		// Database deletion should still succeed if the file store is temporarily unavailable.
+	}
 }

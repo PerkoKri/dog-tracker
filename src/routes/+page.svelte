@@ -3,65 +3,96 @@
 	import AuthPanel from '$lib/components/AuthPanel.svelte';
 	import BottomNav from '$lib/components/BottomNav.svelte';
 	import Dashboard from '$lib/components/Dashboard.svelte';
+	import DogManager from '$lib/components/DogManager.svelte';
 	import EntryForm from '$lib/components/EntryForm.svelte';
+	import PlannerPanel from '$lib/components/PlannerPanel.svelte';
+	import StatsPanel from '$lib/components/StatsPanel.svelte';
 	import Timeline from '$lib/components/Timeline.svelte';
+	import {
+		displayQuantity,
+		durationToMinutes,
+		resolveUnitValue,
+		routineDefaults,
+		unitPresetForValue,
+		walkDurationUnitOptions
+	} from '$lib/forms/routine-fields.js';
 
-	const storageKey = 'dogtracker-activities';
 	const authStorageKey = 'dogtracker-auth';
 
-	const starterActivities = [
-		{
-			dogName: 'Milo',
-			type: 'Gassi',
-			amount: 35,
-			time: '07:40',
-			note: 'Ruhige Morgenrunde im Park',
-			createdAt: Date.now() - 1000 * 60 * 90
-		},
-		{
-			dogName: 'Milo',
-			type: 'Futter',
-			amount: 1,
-			time: '12:15',
-			note: 'Trockenfutter vollständig gegessen',
-			createdAt: Date.now() - 1000 * 60 * 35
-		}
-	];
-
-	let activities = $state(starterActivities);
-	let dogs = $state([{ name: 'Milo' }, { name: 'Luna' }]);
+	let activities = $state([]);
+	let dogs = $state([]);
+	let reminders = $state([]);
+	let holidays = $state([]);
 	let user = $state(null);
 	let token = $state('');
 	let authMode = $state('login');
 	let authName = $state('');
-	let authEmail = $state('demo@dogtracker.ch');
-	let authPassword = $state('demo123');
+	let authEmail = $state('');
+	let authPassword = $state('');
 	let authMessage = $state('');
 	let isAuthenticating = $state(false);
 	let currentStep = $state(1);
-	let dogName = $state('Milo');
-	let newDogName = $state('');
+	let dogName = $state('');
 	let type = $state('Gassi');
 	let amount = $state(25);
+	let activityDate = $state('');
 	let time = $state('');
 	let note = $state('');
+	let routineTitle = $state('');
+	let routineUnitPreset = $state('Minuten');
+	let routineUnitCustom = $state('');
+	let careType = $state('Fellpflege');
+	let vetReason = $state('');
+	let vetClinic = $state('');
+	let attachmentName = $state('');
+	let attachmentType = $state('');
+	let attachmentData = $state('');
+	let attachmentSize = $state(0);
+	let reminderDogName = $state('');
+	let reminderType = $state('Allgemein');
+	let reminderTitle = $state('');
+	let reminderDate = $state('');
+	let reminderTime = $state('08:00');
+	let reminderAmount = $state(1);
+	let reminderUnitPreset = $state('Minuten');
+	let reminderUnitCustom = $state('');
+	let reminderNote = $state('');
+	let reminderVetClinic = $state('');
+	let reminderRecurrence = $state('once');
+	let reminderMessage = $state('');
+	let notificationPermission = $state('default');
+	let now = $state(Date.now());
+	let notifiedReminderIds = $state(new Set());
 	let isLoading = $state(true);
 	let isSaving = $state(false);
+	let activeView = $state('home');
 	let statusMessage = $state('');
-	let successMessage = $state('');
+	let dogMessage = $state('');
+	let entryMessage = $state('');
 
 	let sortedActivities = $derived([...activities].sort((a, b) => b.createdAt - a.createdAt));
+	let sortedReminders = $derived(
+		[...reminders]
+			.map((reminder) => ({ ...reminder, isDue: isReminderDue(reminder) }))
+			.sort(compareReminders)
+	);
+	let dueReminders = $derived(sortedReminders.filter((reminder) => !reminder.completed && reminder.isDue));
+	let upcomingReminders = $derived(sortedReminders.filter((reminder) => !reminder.completed).slice(0, 5));
 	let selectedDogActivities = $derived(activities.filter((activity) => activity.dogName === dogName));
 	let walkMinutes = $derived(
 		selectedDogActivities
 			.filter((activity) => activity.type === 'Gassi')
-			.reduce((sum, activity) => sum + Number(activity.amount || 0), 0)
+			.reduce((sum, activity) => sum + durationToMinutes(activity.amount, activity.unit), 0)
 	);
 	let foodCount = $derived(selectedDogActivities.filter((activity) => activity.type === 'Futter').length);
 	let latestActivity = $derived([...selectedDogActivities].sort((a, b) => b.createdAt - a.createdAt)[0]);
 
 	onMount(async () => {
+		activityDate = todayDate();
+		reminderDate = todayDate();
 		time = new Date().toTimeString().slice(0, 5);
+		notificationPermission =
+			typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
 		const savedAuth = localStorage.getItem(authStorageKey);
 		if (savedAuth) {
 			try {
@@ -74,17 +105,126 @@
 		}
 
 		if (token) {
+			restoreNotifiedReminders();
 			await loadDogs();
 			await loadActivities();
+			await loadReminders();
+			await loadHolidays();
 		} else {
 			isLoading = false;
 		}
+
+		const interval = setInterval(() => {
+			now = Date.now();
+			notifyDueReminders();
+		}, 30000);
+
+		return () => clearInterval(interval);
 	});
 
 	function authHeaders() {
 		return {
 			Authorization: `Bearer ${token}`
 		};
+	}
+
+	function activityStorageKey() {
+		return user?.id ? `dogtracker-activities-${user.id}` : 'dogtracker-activities';
+	}
+
+	function createLocalId() {
+		return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+			? crypto.randomUUID()
+			: Math.random().toString(36).slice(2, 10);
+	}
+
+	function normalizeTime(value) {
+		return typeof value === 'string' && /^\d{2}:\d{2}$/.test(value) ? value : '';
+	}
+
+	function normalizePositiveAmount(value, fallback = 0) {
+		const numeric = Number(value);
+		return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
+	}
+
+	function normalizeDogRecord(dog) {
+		const feedingSchedules = Array.isArray(dog.feedingSchedules) && dog.feedingSchedules.length
+			? dog.feedingSchedules
+					.map((schedule) => ({
+						id: schedule?.id || createLocalId(),
+						title: schedule?.title || schedule?.name || '',
+						name: schedule?.name || schedule?.title || '',
+						time: normalizeTime(schedule?.time),
+						amount: normalizePositiveAmount(schedule?.amount),
+						unit: schedule?.unit || 'Portion'
+					}))
+					.filter((schedule) => schedule.time && schedule.amount > 0)
+			: dog.feedingTime && Number(dog.feedingAmount) > 0
+				? [
+						{
+							id: createLocalId(),
+							title: dog.feedingTitle || dog.feedingName || '',
+							name: dog.feedingName || dog.feedingTitle || '',
+							time: normalizeTime(dog.feedingTime),
+							amount: normalizePositiveAmount(dog.feedingAmount),
+							unit: dog.feedingUnit || 'Portion'
+						}
+					]
+				: [];
+
+		const medicationSchedules = Array.isArray(dog.medicationSchedules) && dog.medicationSchedules.length
+			? dog.medicationSchedules
+					.map((schedule) => ({
+						id: schedule?.id || createLocalId(),
+						title: schedule?.title || schedule?.name || '',
+						name: schedule?.name || schedule?.title || '',
+						time: normalizeTime(schedule?.time),
+						dose: normalizePositiveAmount(schedule?.dose, 1),
+						unit: schedule?.unit || 'Stück'
+					}))
+					.filter((schedule) => schedule.title && schedule.time && schedule.dose > 0)
+			: dog.medicationName && dog.medicationTime
+				? [
+						{
+							id: createLocalId(),
+							title: dog.medicationTitle || dog.medicationName,
+							name: dog.medicationName || dog.medicationTitle || '',
+							time: normalizeTime(dog.medicationTime),
+							dose: normalizePositiveAmount(dog.medicationDose, 1),
+							unit: dog.medicationUnit || dog.medicationDosage || 'Stück'
+						}
+					]
+				: [];
+
+		const walkDuration = normalizePositiveAmount(dog.walkDuration, 30);
+		const walkDurationUnit = unitPresetForValue(dog.walkDurationUnit, walkDurationUnitOptions, 'Minuten');
+
+		return {
+			...dog,
+			hint: dog.hint || '',
+			feedingSchedules,
+			medicationSchedules,
+			dossier: Array.isArray(dog.dossier) ? dog.dossier : [],
+			walkTime: dog.walkTime || '',
+			walkDuration,
+			walkDurationUnit,
+			feedingTime: feedingSchedules[0]?.time || '',
+			feedingAmount: feedingSchedules[0]?.amount || 0,
+			feedingUnit: feedingSchedules[0]?.unit || '',
+			feedingTitle: feedingSchedules[0]?.title || feedingSchedules[0]?.name || '',
+			medicationName: medicationSchedules[0]?.name || '',
+			medicationTitle: medicationSchedules[0]?.title || medicationSchedules[0]?.name || '',
+			medicationTime: medicationSchedules[0]?.time || '',
+			medicationDose: medicationSchedules[0]?.dose || 0,
+			medicationUnit: medicationSchedules[0]?.unit || '',
+			medicationDosage: medicationSchedules[0]
+				? `${medicationSchedules[0].dose} ${medicationSchedules[0].unit || ''}`.trim()
+				: ''
+		};
+	}
+
+	function normalizeDogList(list) {
+		return Array.isArray(list) ? list.map(normalizeDogRecord) : [];
 	}
 
 	async function submitAuth() {
@@ -108,9 +248,14 @@
 			token = data.token;
 			localStorage.setItem(authStorageKey, JSON.stringify({ user, token }));
 			statusMessage = '';
-			successMessage = '';
+			dogMessage = '';
+			entryMessage = '';
+			reminderMessage = '';
+			restoreNotifiedReminders();
 			await loadDogs();
 			await loadActivities();
+			await loadReminders();
+			await loadHolidays();
 		} catch (error) {
 			authMessage = error instanceof Error ? error.message : 'Login fehlgeschlagen';
 		} finally {
@@ -121,10 +266,33 @@
 	function logout() {
 		user = null;
 		token = '';
-		activities = starterActivities;
-		dogs = [{ name: 'Milo' }, { name: 'Luna' }];
+		activities = [];
+		dogs = [];
+		reminders = [];
+		holidays = [];
+		dogName = '';
+		reminderDogName = '';
 		currentStep = 1;
+		activeView = 'home';
 		localStorage.removeItem(authStorageKey);
+	}
+
+	function navigate(view) {
+		statusMessage = '';
+		activeView = view;
+		if (view === 'capture') {
+			entryMessage = '';
+			currentStep = 1;
+			activityDate = activityDate || todayDate();
+			time = new Date().toTimeString().slice(0, 5);
+		}
+		if (view === 'planner') {
+			reminderMessage = '';
+			reminderDate = reminderDate || todayDate();
+			if (!['Allgemein', 'Andere'].includes(reminderType)) {
+				reminderDogName = reminderDogName || dogName || dogs[0]?.name || '';
+			}
+		}
 	}
 
 	async function loadDogs() {
@@ -132,11 +300,19 @@
 			const response = await fetch('/api/dogs', { headers: authHeaders() });
 			if (!response.ok) throw new Error('Hunde konnten nicht geladen werden');
 			const data = await response.json();
-			dogs = Array.isArray(data.dogs) && data.dogs.length ? data.dogs : [{ name: 'Milo' }];
-			dogName = dogs[0]?.name || 'Milo';
+			dogs = normalizeDogList(data.dogs);
+			dogName = dogs[0]?.name || '';
+			if (!['Allgemein', 'Andere'].includes(reminderType)) {
+				reminderDogName = dogs[0]?.name || '';
+			}
+			if (dogs.length === 0) {
+				activeView = 'home';
+				dogMessage = 'Erfasse zuerst deinen Hund, damit du Aktivitäten speichern kannst.';
+			}
 		} catch {
-			dogs = [{ name: 'Milo' }, { name: 'Luna' }];
-			dogName = 'Milo';
+			dogs = [];
+			dogName = '';
+			statusMessage = 'Hunde konnten gerade nicht geladen werden.';
 		}
 	}
 
@@ -149,15 +325,15 @@
 			if (!response.ok) throw new Error('API nicht erreichbar');
 			const data = await response.json();
 			activities = Array.isArray(data.activities) ? data.activities : [];
-			localStorage.setItem(storageKey, JSON.stringify(activities));
+			localStorage.setItem(activityStorageKey(), JSON.stringify(activities));
 		} catch {
-			const saved = localStorage.getItem(storageKey);
+			const saved = localStorage.getItem(activityStorageKey());
 			if (saved) {
 				try {
 					const parsed = JSON.parse(saved);
 					if (Array.isArray(parsed)) activities = parsed;
 				} catch {
-					activities = starterActivities;
+					activities = [];
 				}
 			}
 			statusMessage = 'Offline-Modus: Daten werden lokal im Browser angezeigt.';
@@ -166,23 +342,167 @@
 		}
 	}
 
-	async function addDog() {
-		const name = newDogName.trim();
-		if (!name) return;
+	async function loadReminders() {
+		try {
+			const response = await fetch('/api/reminders', { headers: authHeaders() });
+			if (!response.ok) throw new Error('Erinnerungen konnten nicht geladen werden');
+			const data = await response.json();
+			reminders = Array.isArray(data.reminders) ? data.reminders : [];
+		} catch {
+			statusMessage = 'Erinnerungen konnten gerade nicht geladen werden.';
+		}
+	}
+
+	async function loadHolidays() {
+		try {
+			const year = new Date().getFullYear();
+			const response = await fetch(`/api/holidays?year=${year}`, { headers: authHeaders() });
+			if (!response.ok) throw new Error('Feiertage konnten nicht geladen werden');
+			const data = await response.json();
+			holidays = Array.isArray(data.holidays) ? data.holidays : [];
+		} catch {
+			holidays = [];
+		}
+	}
+
+	async function uploadCloudFile({ name, type, size, data }) {
+		const response = await fetch('/api/files', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', ...authHeaders() },
+			body: JSON.stringify({ name, type, size, data })
+		});
+		const result = await response.json();
+		if (!response.ok) {
+			throw new Error(result.message || 'Datei konnte nicht hochgeladen werden.');
+		}
+		return result.file;
+	}
+
+	function createDogRoutineReminders(dog) {
+		const remindersToCreate = [];
+		const feedingSchedules = Array.isArray(dog.feedingSchedules) ? dog.feedingSchedules : [];
+		const medicationSchedules = Array.isArray(dog.medicationSchedules) ? dog.medicationSchedules : [];
+		const walkTime = normalizeTime(dog.walkTime);
+		const walkDuration = normalizePositiveAmount(dog.walkDuration, 30);
+		const walkDurationUnit = unitPresetForValue(dog.walkDurationUnit, walkDurationUnitOptions, 'Minuten');
+
+		for (const schedule of feedingSchedules) {
+			if (!schedule?.time || Number(schedule.amount) <= 0) continue;
+			remindersToCreate.push({
+				dogName: dog.name,
+				type: 'Futter',
+				title: schedule.title || schedule.name || `Futter um ${schedule.time}`,
+				date: todayDate(),
+				time: schedule.time,
+				amount: Number(schedule.amount),
+				unit: schedule.unit || 'Portion',
+				recurrence: 'daily'
+			});
+		}
+
+		for (const schedule of medicationSchedules) {
+			const title = schedule.title || schedule.name || '';
+			if (!schedule?.time || !title) continue;
+			const dose = Number(schedule.dose ?? schedule.amount ?? 0);
+			remindersToCreate.push({
+				dogName: dog.name,
+				type: 'Medikament',
+				title: title || `${schedule.name} um ${schedule.time}`,
+				date: todayDate(),
+				time: schedule.time,
+				medicationName: title,
+				dose,
+				unit: schedule.unit || 'Stück',
+				dosage: displayQuantity(dose, schedule.unit || 'Stück'),
+				recurrence: 'daily'
+			});
+		}
+
+		if (walkTime) {
+			remindersToCreate.push({
+				dogName: dog.name,
+				type: 'Gassi',
+				title: 'Gassi gehen',
+				date: todayDate(),
+				time: walkTime,
+				amount: walkDuration,
+				unit: walkDurationUnit,
+				recurrence: 'daily'
+			});
+		}
+
+		return remindersToCreate;
+	}
+
+	async function addDog(payload) {
+		const name = payload?.name?.trim();
+		const breed = payload?.breed?.trim();
+		if (!name || !breed) {
+			throw new Error('Hundename und Rasse sind Pflichtfelder.');
+		}
+
+		const dossier = [];
+		const uploadedFiles = [];
 
 		try {
+			for (const item of payload.dossier || []) {
+				if (!item?.title || !item?.data) continue;
+				const uploaded = await uploadCloudFile({
+					name: item.fileName,
+					type: item.fileType,
+					size: item.fileSize,
+					data: item.data
+				});
+				uploadedFiles.push(uploaded);
+				dossier.push({
+					id: item.id || createLocalId(),
+					title: item.title.trim(),
+					file: uploaded
+				});
+			}
+
+			const feedingSchedules = Array.isArray(payload.feedingSchedules) ? payload.feedingSchedules : [];
+			const medicationSchedules = Array.isArray(payload.medicationSchedules) ? payload.medicationSchedules : [];
+			const routine = {
+				name,
+				breed,
+				hint: payload.hint || '',
+				feedingSchedules,
+				medicationSchedules,
+				dossier,
+				walkTime: normalizeTime(payload.walkTime),
+				walkDuration: normalizePositiveAmount(payload.walkDuration, 30),
+				walkDurationUnit: unitPresetForValue(payload.walkDurationUnit, walkDurationUnitOptions, 'Minuten')
+			};
+
 			const response = await fetch('/api/dogs', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', ...authHeaders() },
-				body: JSON.stringify({ name })
+				body: JSON.stringify(routine)
 			});
 			const data = await response.json();
 			if (!response.ok) throw new Error(data.message || 'Hund konnte nicht gespeichert werden');
-			dogs = [...dogs, data.dog];
-			dogName = data.dog.name;
-			newDogName = '';
+
+			const savedDog = normalizeDogRecord(data.dog);
+			dogs = [...dogs, savedDog];
+			dogName = savedDog.name;
+			reminderDogName = savedDog.name;
+			dogMessage = `${savedDog.name} wurde hinzugefügt.`;
+			statusMessage = '';
+			await createRoutineReminders(savedDog);
+			return savedDog;
 		} catch (error) {
-			statusMessage = error instanceof Error ? error.message : 'Hund konnte nicht gespeichert werden.';
+			if (uploadedFiles.length > 0) {
+				await Promise.allSettled(
+					uploadedFiles.map((file) =>
+						fetch(`/api/files?key=${encodeURIComponent(file.key)}`, {
+							method: 'DELETE',
+							headers: authHeaders()
+						})
+					)
+				);
+			}
+			throw error;
 		}
 	}
 
@@ -190,7 +510,8 @@
 		if (!dog?._id || dogs.length <= 1) return;
 
 		statusMessage = '';
-		successMessage = '';
+		dogMessage = '';
+		entryMessage = '';
 
 		try {
 			const response = await fetch(`/api/dogs?id=${dog._id}`, {
@@ -202,8 +523,10 @@
 
 			dogs = dogs.filter((item) => item._id !== dog._id);
 			activities = activities.filter((activity) => activity.dogName !== dog.name);
-			dogName = dogs[0]?.name || 'Milo';
-			successMessage = `${dog.name} wurde gelöscht.`;
+			reminders = reminders.filter((reminder) => reminder.dogName !== dog.name);
+			dogName = dogs[0]?.name || '';
+			reminderDogName = dogName;
+			dogMessage = `${dog.name} wurde gelöscht.`;
 		} catch (error) {
 			statusMessage = error instanceof Error ? error.message : 'Hund konnte nicht gelöscht werden.';
 		}
@@ -211,35 +534,539 @@
 
 	function setStep(step) {
 		currentStep = Math.min(3, Math.max(1, step));
-		successMessage = '';
+		entryMessage = '';
 	}
 
 	function updateAmountForType(nextType) {
 		type = nextType;
-		amount = nextType === 'Futter' ? 1 : 25;
+		amount = getDefaultAmount(nextType);
+		if (['Futter', 'Medikament', 'Gassi'].includes(nextType)) {
+			routineTitle = '';
+			routineUnitPreset = getDefaultUnit(nextType);
+			routineUnitCustom = '';
+		}
+		entryMessage = '';
 	}
 
 	function formatActivity(activity) {
-		const unit = activity.type === 'Gassi' ? 'min' : activity.type === 'Futter' ? 'Portion' : 'min';
-		const plural = activity.type === 'Futter' && Number(activity.amount) !== 1 ? 'en' : '';
-		return `${activity.time} · ${activity.amount} ${unit}${plural}`;
+		const date = activity.date ? `${formatDate(activity.date)} · ` : '';
+		const start = activity.time || '--:--';
+		const end = activity.endTime ? `-${activity.endTime}` : '';
+		const amountValue = displayQuantity(activity.amount, activity.unit || '');
+
+		if (activity.type === 'Futter') {
+			const title = activity.title || activity.mealType || 'Futter';
+			return `${date}${start} · ${title} · ${amountValue}`;
+		}
+
+		if (activity.type === 'Pflege') {
+			return `${date}${start}${end} · ${amountValue}${activity.careType ? ` · ${activity.careType}` : ''}`;
+		}
+
+		if (activity.type === 'Medikament') {
+			const title = activity.title || activity.medicationName || 'Medikament';
+			const dose = activity.dose ? displayQuantity(activity.dose, activity.unit || '') : activity.dosage || '';
+			return `${date}${start} · ${title}${dose ? ` · ${dose}` : ''}`;
+		}
+
+		if (activity.type === 'Gassi') {
+			const title = activity.title || 'Gassi gehen';
+			return `${date}${start}${end} · ${title} · ${amountValue}`;
+		}
+
+		if (activity.type === 'Arzt') {
+			return `${date}${start} · ${activity.title || activity.vetReason || 'Termin'}${activity.vetClinic ? ` · ${activity.vetClinic}` : ''}`;
+		}
+
+		return `${date}${start}${end} · ${amountValue}`;
 	}
 
-	async function saveEntry() {
-		isSaving = true;
-		statusMessage = '';
-		successMessage = '';
+	function todayDate() {
+		return new Date().toISOString().slice(0, 10);
+	}
+
+	function formatDate(value) {
+		const [year, month, day] = String(value).split('-');
+		return day && month ? `${day}.${month}.` : value;
+	}
+
+	function addMinutes(value, minutes) {
+		const match = /^(\d{2}):(\d{2})$/.exec(value || '');
+		if (!match || !Number.isFinite(minutes)) return '';
+
+		const total = Number(match[1]) * 60 + Number(match[2]) + minutes;
+		const normalized = ((Math.round(total) % 1440) + 1440) % 1440;
+		const hours = String(Math.floor(normalized / 60)).padStart(2, '0');
+		const mins = String(normalized % 60).padStart(2, '0');
+		return `${hours}:${mins}`;
+	}
+
+	function getDefaultAmount(nextType) {
+		if (nextType === 'Futter') return routineDefaults.Futter.amount;
+		if (nextType === 'Medikament') return routineDefaults.Medikament.amount;
+		if (nextType === 'Gassi') return routineDefaults.Gassi.amount;
+		if (nextType === 'Pflege') return 20;
+		return 0;
+	}
+
+	function getDefaultUnit(nextType) {
+		if (nextType === 'Futter') return routineDefaults.Futter.unitPreset;
+		if (nextType === 'Medikament') return routineDefaults.Medikament.unitPreset;
+		if (nextType === 'Gassi') return routineDefaults.Gassi.unitPreset;
+		return '';
+	}
+
+	function normalizeAmount(nextType, value) {
+		const numeric = Number(value);
+		if (!Number.isFinite(numeric) || numeric <= 0) return 0;
+		if (nextType === 'Pflege') return Math.min(180, Math.max(1, numeric));
+		return numeric;
+	}
+
+	function buildEntry(uploadedAttachment = null) {
+		const normalizedAmount = normalizeAmount(type, amount);
+		const routineUnit =
+			type === 'Futter'
+				? resolveUnitValue(routineUnitPreset, routineUnitCustom, routineDefaults.Futter.unitPreset)
+				: type === 'Medikament'
+					? resolveUnitValue(
+							routineUnitPreset,
+							routineUnitCustom,
+							routineDefaults.Medikament.unitPreset
+						)
+					: type === 'Gassi'
+						? resolveUnitValue(routineUnitPreset, routineUnitCustom, routineDefaults.Gassi.unitPreset)
+						: '';
+		const entryDate = activityDate || todayDate();
+		const entryTime = time || new Date().toTimeString().slice(0, 5);
+		const createdAt = Date.parse(`${entryDate}T${entryTime}`) || Date.now();
 
 		const entry = {
 			dogName,
 			type,
-			amount: Number(amount),
-			time: time || new Date().toTimeString().slice(0, 5),
+			amount: normalizedAmount,
+			date: entryDate,
+			time: entryTime,
 			note: note.trim(),
-			createdAt: Date.now()
+			createdAt
 		};
 
+		if (type === 'Gassi') {
+			entry.title = routineTitle.trim() || 'Gassi gehen';
+			entry.unit = routineUnit || routineDefaults.Gassi.unitPreset;
+			entry.endTime = addMinutes(entryTime, durationToMinutes(normalizedAmount, entry.unit));
+		}
+
+		if (type === 'Futter') {
+			entry.title = routineTitle.trim() || 'Futter';
+			entry.unit = routineUnit || routineDefaults.Futter.unitPreset;
+		}
+
+		if (type === 'Pflege') {
+			entry.unit = 'min';
+			entry.endTime = addMinutes(entryTime, normalizedAmount);
+			entry.careType = careType;
+		}
+
+		if (type === 'Medikament') {
+			entry.title = routineTitle.trim() || 'Medikament';
+			entry.dose = normalizedAmount;
+			entry.unit = routineUnit || routineDefaults.Medikament.unitPreset;
+		}
+
+		if (type === 'Arzt') {
+			entry.title = vetReason.trim() || 'Termin';
+			entry.vetReason = vetReason.trim();
+			entry.vetClinic = vetClinic.trim();
+		}
+
+		if (uploadedAttachment) {
+			entry.attachment = uploadedAttachment;
+		}
+
+		return entry;
+	}
+
+	async function uploadAttachment() {
+		const response = await fetch('/api/files', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', ...authHeaders() },
+			body: JSON.stringify({
+				name: attachmentName,
+				type: attachmentType,
+				size: attachmentSize,
+				data: attachmentData
+			})
+		});
+		const data = await response.json();
+		if (!response.ok) {
+			throw new Error(data.message || 'Anhang konnte nicht in der Cloud gespeichert werden.');
+		}
+		return data.file;
+	}
+
+	function validateEntry(entry) {
+		if (!entry.dogName) return 'Bitte erfasse zuerst deinen Hund.';
+		if (!entry.date) return 'Bitte wähle ein Datum.';
+		if (!entry.time) return 'Bitte wähle eine Uhrzeit.';
+		if (entry.type === 'Futter' && (!entry.amount || entry.amount <= 0)) {
+			return 'Bitte eine Futtermenge angeben.';
+		}
+		if (entry.type === 'Gassi' && (!entry.amount || entry.amount <= 0)) {
+			return 'Bitte eine Gassi-Dauer angeben.';
+		}
+		if (entry.type === 'Pflege' && (!entry.amount || entry.amount < 1 || entry.amount > 180)) {
+			return 'Pflege muss zwischen 1 und 180 Minuten liegen.';
+		}
+		if (entry.type === 'Medikament' && (!entry.title || !entry.dose || entry.dose <= 0)) {
+			return 'Bitte Medikament und Dosis erfassen.';
+		}
+		if ((entry.type === 'Futter' || entry.type === 'Medikament' || entry.type === 'Gassi') && !entry.unit) {
+			return 'Bitte eine Einheit wählen.';
+		}
+		if (entry.type === 'Arzt' && !entry.vetReason) {
+			return 'Bitte den Grund für den Arzttermin erfassen.';
+		}
+		return '';
+	}
+
+	function reminderDateTimeValue(reminder) {
+		return Date.parse(`${reminder.date || todayDate()}T${reminder.time || '00:00'}`) || 0;
+	}
+
+	function isReminderDue(reminder) {
+		return !reminder.completed && reminderDateTimeValue(reminder) <= now;
+	}
+
+	function compareReminders(a, b) {
+		if (a.completed !== b.completed) return a.completed ? 1 : -1;
+		return reminderDateTimeValue(a) - reminderDateTimeValue(b);
+	}
+
+	function addDaysToDate(value, days) {
+		const date = new Date(`${value || todayDate()}T12:00`);
+		date.setDate(date.getDate() + days);
+		return date.toISOString().slice(0, 10);
+	}
+
+	function formatReminder(reminder) {
+		const date = reminder.date ? formatDate(reminder.date) : 'Heute';
+		const repeat = reminder.recurrence === 'daily' ? ' · täglich' : '';
+		const dogLabel = reminder.dogName ? reminder.dogName : 'ohne Hund';
+		const amount =
+			reminder.type === 'Futter' && reminder.amount
+				? ` · ${displayQuantity(reminder.amount, reminder.unit || '')}`
+				: '';
+		const meds =
+			reminder.type === 'Medikament'
+				? ` · ${reminder.title || reminder.medicationName || 'Medikament'}${reminder.dose ? ` · ${displayQuantity(reminder.dose, reminder.unit || '')}` : reminder.dosage ? ` · ${reminder.dosage}` : ''}`
+				: '';
+		const walk =
+			reminder.type === 'Gassi' && reminder.amount
+				? ` · ${reminder.title || 'Gassi gehen'} · ${displayQuantity(reminder.amount, reminder.unit || '')}`
+				: '';
+		const clinic = reminder.type === 'Arzt' && reminder.vetClinic ? ` · ${reminder.vetClinic}` : '';
+		return `${date} · ${reminder.time} · ${dogLabel} · ${reminder.type}${amount}${meds}${walk}${clinic}${repeat}`;
+	}
+
+	function buildReminder() {
+		const title =
+			reminderType === 'Futter'
+				? reminderTitle.trim() || 'Futter'
+				: reminderType === 'Medikament'
+					? reminderTitle.trim() || 'Medikament'
+					: reminderType === 'Gassi'
+						? reminderTitle.trim() || 'Gassi gehen'
+						: reminderType === 'Arzt'
+							? reminderTitle.trim() || 'Arzttermin'
+							: reminderTitle.trim() || 'Aufgabe';
+		const unit =
+			reminderType === 'Futter'
+				? resolveUnitValue(reminderUnitPreset, reminderUnitCustom, routineDefaults.Futter.unitPreset)
+				: reminderType === 'Medikament'
+					? resolveUnitValue(
+							reminderUnitPreset,
+							reminderUnitCustom,
+							routineDefaults.Medikament.unitPreset
+						)
+					: reminderType === 'Gassi'
+						? resolveUnitValue(reminderUnitPreset, reminderUnitCustom, routineDefaults.Gassi.unitPreset)
+						: '';
+		const amountValue = Number(reminderAmount) || 0;
+
+		return {
+			dogName: reminderDogName || '',
+			type: reminderType,
+			title,
+			date: reminderDate || todayDate(),
+			time: reminderTime || '09:00',
+			amount: reminderType === 'Futter' || reminderType === 'Gassi' ? amountValue : 0,
+			dose: reminderType === 'Medikament' ? amountValue : 0,
+			unit,
+			note: reminderNote.trim(),
+			medicationName: reminderType === 'Medikament' ? title : '',
+			dosage: reminderType === 'Medikament' ? displayQuantity(amountValue, unit) : '',
+			vetClinic: reminderVetClinic.trim(),
+			recurrence: reminderRecurrence
+		};
+	}
+
+	function resetReminderForm() {
+		reminderType = 'Allgemein';
+		reminderTitle = '';
+		reminderDate = todayDate();
+		reminderTime = '08:00';
+		reminderAmount = 1;
+		reminderUnitPreset = 'Minuten';
+		reminderUnitCustom = '';
+		reminderNote = '';
+		reminderVetClinic = '';
+		reminderRecurrence = 'once';
+		reminderDogName = '';
+	}
+
+	async function postReminder(reminder) {
+		const response = await fetch('/api/reminders', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', ...authHeaders() },
+			body: JSON.stringify(reminder)
+		});
+		const data = await response.json();
+		if (!response.ok) throw new Error(data.message || 'Erinnerung konnte nicht gespeichert werden');
+		reminders = [...reminders, data.reminder];
+		return data.reminder;
+	}
+
+	async function addReminder() {
+		reminderMessage = '';
+		statusMessage = '';
+
 		try {
+			const reminder = buildReminder();
+			if (!reminder.dogName && !['Allgemein', 'Andere'].includes(reminder.type)) {
+				throw new Error('Bitte zuerst einen Hund auswählen.');
+			}
+			await postReminder(reminder);
+			reminderMessage = 'Erinnerung wurde geplant.';
+			resetReminderForm();
+		} catch (error) {
+			reminderMessage =
+				error instanceof Error ? error.message : 'Erinnerung konnte nicht gespeichert werden.';
+		}
+	}
+
+	function activityFromReminder(reminder) {
+		if (!reminder?.dogName) return null;
+		if (!['Gassi', 'Futter', 'Pflege', 'Medikament', 'Arzt'].includes(reminder.type)) return null;
+
+		const legacyDose =
+			typeof reminder.dosage === 'string'
+				? Number(String(reminder.dosage).replace(',', '.').match(/-?\d+(?:\.\d+)?/)?.[0] || 0)
+				: 0;
+		const amount =
+			reminder.type === 'Futter'
+				? Number(reminder.amount || 1)
+				: reminder.type === 'Gassi'
+					? Number(reminder.amount || 30)
+					: reminder.type === 'Medikament'
+						? Number(reminder.dose || reminder.amount || legacyDose || 0)
+						: 0;
+		const entry = {
+			dogName: reminder.dogName,
+			type: reminder.type,
+			amount,
+			unit: reminder.unit,
+			date: reminder.date,
+			time: reminder.time,
+			note: reminder.note || 'Aus Erinnerung erledigt.',
+			createdAt: reminderDateTimeValue(reminder)
+		};
+
+		if (reminder.type === 'Gassi') {
+			entry.title = reminder.title || 'Gassi gehen';
+			entry.endTime = addMinutes(reminder.time, durationToMinutes(amount, reminder.unit));
+		}
+		if (reminder.type === 'Futter') entry.title = reminder.title || 'Futter';
+		if (reminder.type === 'Medikament') {
+			entry.title = reminder.title || reminder.medicationName || 'Medikament';
+			entry.dose = amount;
+			entry.unit = reminder.unit || '';
+			entry.medicationName = entry.title;
+			entry.dosage = displayQuantity(amount, entry.unit);
+		}
+		if (reminder.type === 'Arzt') {
+			entry.title = reminder.title || 'Termin';
+			entry.vetReason = reminder.title;
+			entry.vetClinic = reminder.vetClinic;
+		}
+		return entry;
+	}
+
+	async function saveActivityFromReminder(reminder) {
+		const entry = activityFromReminder(reminder);
+		if (!entry) return;
+		try {
+			const response = await fetch('/api/activities', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', ...authHeaders() },
+				body: JSON.stringify(entry)
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error('Aktivität konnte nicht gespeichert werden');
+			activities = [data.activity, ...activities];
+		} catch {
+			activities = [entry, ...activities];
+		}
+		localStorage.setItem(activityStorageKey(), JSON.stringify(activities));
+	}
+
+	async function completeReminder(reminder) {
+		reminderMessage = '';
+		statusMessage = '';
+
+		try {
+			const response = await fetch(`/api/reminders?id=${reminder._id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json', ...authHeaders() },
+				body: JSON.stringify({ completed: true })
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.message || 'Erinnerung konnte nicht erledigt werden');
+
+			reminders = reminders.map((item) => (item._id === reminder._id ? data.reminder : item));
+			await saveActivityFromReminder(reminder);
+
+			if (reminder.recurrence === 'daily') {
+				const { _id, completed, completedAt, createdAt, isDue, ...nextReminder } = reminder;
+				await postReminder({
+					...nextReminder,
+					date: addDaysToDate(reminder.date, 1),
+					completed: false
+				});
+			}
+
+			reminderMessage = 'Erledigt und im Verlauf gespeichert.';
+		} catch (error) {
+			reminderMessage =
+				error instanceof Error ? error.message : 'Erinnerung konnte nicht erledigt werden.';
+		}
+	}
+
+	async function deleteReminder(reminder) {
+		try {
+			await fetch(`/api/reminders?id=${reminder._id}`, { method: 'DELETE', headers: authHeaders() });
+			reminders = reminders.filter((item) => item._id !== reminder._id);
+		} catch {
+			reminderMessage = 'Erinnerung konnte nicht gelöscht werden.';
+		}
+	}
+
+	async function createRoutineReminders(dog) {
+		const planned = createDogRoutineReminders(dog);
+
+		for (const reminder of planned) {
+			try {
+				await postReminder(reminder);
+			} catch {
+				statusMessage = 'Ein Routine-Reminder konnte nicht erstellt werden.';
+			}
+		}
+
+		if (planned.length > 0) {
+			reminderMessage = `${planned.length} Routine-Erinnerung${planned.length === 1 ? '' : 'en'} geplant.`;
+		}
+	}
+
+	async function requestNotifications() {
+		if (typeof Notification === 'undefined') {
+			reminderMessage = 'Browser-Benachrichtigungen werden hier nicht unterstützt.';
+			notificationPermission = 'unsupported';
+			return;
+		}
+
+		notificationPermission = await Notification.requestPermission();
+		reminderMessage =
+			notificationPermission === 'granted'
+				? 'Benachrichtigungen sind aktiv.'
+				: 'Benachrichtigungen wurden nicht aktiviert.';
+		notifyDueReminders();
+	}
+
+	function restoreNotifiedReminders() {
+		try {
+			const saved = localStorage.getItem(`dogtracker-notified-${user?.id}`);
+			notifiedReminderIds = new Set(saved ? JSON.parse(saved) : []);
+		} catch {
+			notifiedReminderIds = new Set();
+		}
+	}
+
+	function rememberNotifiedReminder(id) {
+		const next = new Set(notifiedReminderIds);
+		next.add(id);
+		notifiedReminderIds = next;
+		localStorage.setItem(`dogtracker-notified-${user?.id}`, JSON.stringify([...next]));
+	}
+
+	function notifyDueReminders() {
+		if (typeof Notification === 'undefined' || notificationPermission !== 'granted') return;
+
+		for (const reminder of dueReminders.slice(0, 3)) {
+			if (!reminder._id || notifiedReminderIds.has(reminder._id)) continue;
+			new Notification('DogTracker Erinnerung', {
+				body: `${reminder.time} · ${reminder.title} für ${reminder.dogName}`
+			});
+			rememberNotifiedReminder(reminder._id);
+		}
+	}
+
+	function resetEntryForm() {
+		type = 'Gassi';
+		amount = getDefaultAmount('Gassi');
+		activityDate = todayDate();
+		time = new Date().toTimeString().slice(0, 5);
+		note = '';
+		routineTitle = '';
+		routineUnitPreset = routineDefaults.Gassi.unitPreset;
+		routineUnitCustom = '';
+		careType = 'Fellpflege';
+		vetReason = '';
+		vetClinic = '';
+		attachmentName = '';
+		attachmentType = '';
+		attachmentData = '';
+		attachmentSize = 0;
+		currentStep = 1;
+	}
+
+	async function saveEntry() {
+		if (!dogName) {
+			activeView = 'home';
+			dogMessage = 'Bitte erfasse zuerst deinen Hund.';
+			return;
+		}
+
+		isSaving = true;
+		statusMessage = '';
+		entryMessage = '';
+
+		let entry = buildEntry();
+		const validationMessage = validateEntry(entry);
+		if (validationMessage) {
+			entryMessage = validationMessage;
+			isSaving = false;
+			return;
+		}
+
+		let uploadedAttachment = null;
+		let shouldCloseForm = false;
+		try {
+			if (attachmentData && attachmentName) {
+				entryMessage = 'Anhang wird in der Cloud gespeichert...';
+				uploadedAttachment = await uploadAttachment();
+				entry = buildEntry(uploadedAttachment);
+			}
+
 			const response = await fetch('/api/activities', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -248,25 +1075,34 @@
 			if (!response.ok) throw new Error('Speichern fehlgeschlagen');
 			const saved = await response.json();
 			activities = [saved.activity, ...activities];
-			successMessage = 'Aktivität gespeichert und im Dashboard aktualisiert.';
-		} catch {
-			activities = [entry, ...activities];
-			statusMessage = 'Aktivität lokal gespeichert. MongoDB ist gerade nicht erreichbar.';
-			successMessage = 'Aktivität lokal gespeichert.';
+			entryMessage = 'Aktivität gespeichert und im Dashboard aktualisiert.';
+			shouldCloseForm = true;
+		} catch (error) {
+			if (attachmentData && attachmentName && !uploadedAttachment) {
+				const message =
+					error instanceof Error ? error.message : 'Anhang konnte nicht gespeichert werden.';
+				statusMessage = message;
+				entryMessage = message;
+			} else {
+				activities = [entry, ...activities];
+				statusMessage = 'Aktivität lokal gespeichert. MongoDB ist gerade nicht erreichbar.';
+				entryMessage = 'Aktivität lokal gespeichert.';
+				shouldCloseForm = true;
+			}
 		} finally {
-			localStorage.setItem(storageKey, JSON.stringify(activities));
-			type = 'Gassi';
-			amount = 25;
-			time = new Date().toTimeString().slice(0, 5);
-			note = '';
-			currentStep = 1;
+			if (shouldCloseForm) {
+				localStorage.setItem(activityStorageKey(), JSON.stringify(activities));
+				resetEntryForm();
+				activeView = 'home';
+			}
 			isSaving = false;
 		}
 	}
 
 	async function clearActivities() {
 		statusMessage = '';
-		successMessage = '';
+		entryMessage = '';
+		dogMessage = '';
 
 		try {
 			await fetch('/api/activities', { method: 'DELETE', headers: authHeaders() });
@@ -275,14 +1111,15 @@
 		}
 
 		activities = [];
-		localStorage.setItem(storageKey, JSON.stringify([]));
+			localStorage.setItem(activityStorageKey(), JSON.stringify([]));
 	}
 
 	async function deleteActivity(activity) {
 		if (!activity?._id) return;
 
 		statusMessage = '';
-		successMessage = '';
+		entryMessage = '';
+		dogMessage = '';
 
 		try {
 			const response = await fetch(`/api/activities?id=${activity._id}`, {
@@ -293,27 +1130,20 @@
 			if (!response.ok) throw new Error(data.message || 'Aktivität konnte nicht gelöscht werden');
 
 			activities = activities.filter((item) => item._id !== activity._id);
-			localStorage.setItem(storageKey, JSON.stringify(activities));
-			successMessage = 'Aktivität wurde gelöscht.';
+			localStorage.setItem(activityStorageKey(), JSON.stringify(activities));
+			entryMessage = 'Aktivität wurde gelöscht.';
 		} catch (error) {
 			statusMessage = error instanceof Error ? error.message : 'Aktivität konnte nicht gelöscht werden.';
 		}
 	}
 
-	async function resetDemo() {
-		activities = starterActivities;
-		localStorage.setItem(storageKey, JSON.stringify(starterActivities));
-		currentStep = 1;
-		statusMessage = 'Demo-Daten wurden lokal zurückgesetzt.';
-		successMessage = '';
-	}
 </script>
 
 <svelte:head>
 	<title>DogTracker</title>
 	<meta
 		name="description"
-		content="DogTracker Prototyp zum schnellen Erfassen von Gassi, Futter und Pflege."
+		content="DogTracker Prototyp zum Erfassen von Gassi, Futter, Pflege, Medikamenten und Arztterminen."
 	/>
 </svelte:head>
 
@@ -332,15 +1162,9 @@
 	<header class="topbar">
 		<div>
 			<p class="eyebrow">DogTracker</p>
-			<h1>Heute mit {dogName}</h1>
+			<h1>{dogName ? `Heute mit ${dogName}` : 'Willkommen'}</h1>
 		</div>
 		<div class="header-actions">
-			<button class="icon-button" type="button" aria-label="Demo-Daten zurücksetzen" onclick={resetDemo}>
-				<svg viewBox="0 0 24 24" aria-hidden="true">
-					<path d="M3 12a9 9 0 1 0 3-6.7" />
-					<path d="M3 4v5h5" />
-				</svg>
-			</button>
 			<button class="logout-button" type="button" onclick={logout}>Logout</button>
 		</div>
 	</header>
@@ -355,42 +1179,121 @@
 		{foodCount}
 		{formatActivity}
 		isLoading={isLoading}
+		hasDogs={dogs.length > 0}
 	/>
 
-	<EntryForm
-		bind:currentStep
-		bind:dogName
-		bind:newDogName
-		bind:type
-		bind:amount
-		bind:time
-		bind:note
-		{dogs}
-		{isSaving}
-		{successMessage}
-		{setStep}
-		{updateAmountForType}
-		onAddDog={addDog}
-		onDeleteDog={deleteDog}
-		onSave={saveEntry}
-	/>
+	{#if dueReminders.length > 0}
+		<section class="reminder-alert" aria-labelledby="due-title">
+			<p class="eyebrow">Jetzt fällig</p>
+			<h2 id="due-title">Erinnerung offen</h2>
+			{#each dueReminders.slice(0, 3) as reminder}
+				<article>
+					<div>
+						<strong>{reminder.title}</strong>
+						<span>{formatReminder(reminder)}</span>
+					</div>
+					<button type="button" onclick={() => completeReminder(reminder)}>Erledigt</button>
+				</article>
+			{/each}
+		</section>
+	{/if}
 
-	<Timeline
-		activities={sortedActivities}
-		{formatActivity}
-		{clearActivities}
-		onDeleteActivity={deleteActivity}
-	/>
+	{#if activeView === 'home'}
+		<DogManager
+			{user}
+			{dogs}
+			bind:dogName
+			successMessage={dogMessage}
+			onAddDog={addDog}
+			onDeleteDog={deleteDog}
+		/>
+
+		<Timeline
+			activities={sortedActivities.slice(0, 4)}
+			{formatActivity}
+			{clearActivities}
+			onDeleteActivity={deleteActivity}
+		/>
+	{:else if activeView === 'capture'}
+		{#if dogs.length === 0}
+			<section class="empty-panel" aria-labelledby="first-dog-title">
+				<p class="eyebrow">Erster Schritt</p>
+				<h2 id="first-dog-title">Erfasse zuerst deinen Hund.</h2>
+				<p>Danach kannst du über Erfassen Gassi, Futter, Pflege, Medikamente und Arzttermine dokumentieren.</p>
+				<button class="primary-action" type="button" onclick={() => (activeView = 'home')}>
+					Hund hinzufügen
+				</button>
+			</section>
+		{:else}
+			<EntryForm
+				bind:currentStep
+				bind:dogName
+				bind:type
+				bind:amount
+				bind:activityDate
+				bind:time
+				bind:note
+				bind:routineTitle
+				bind:routineUnitPreset
+				bind:routineUnitCustom
+				bind:careType
+				bind:vetReason
+				bind:vetClinic
+				bind:attachmentName
+				bind:attachmentType
+				bind:attachmentData
+				bind:attachmentSize
+				{dogs}
+				{isSaving}
+				successMessage={entryMessage}
+				{setStep}
+				{updateAmountForType}
+				onSave={saveEntry}
+			/>
+		{/if}
+	{:else if activeView === 'planner'}
+		<PlannerPanel
+			reminders={sortedReminders}
+			{dogs}
+			{holidays}
+			{notificationPermission}
+			bind:reminderDogName
+			bind:reminderType
+			bind:reminderTitle
+			bind:reminderDate
+			bind:reminderTime
+			bind:reminderAmount
+			bind:reminderUnitPreset
+			bind:reminderUnitCustom
+			bind:reminderNote
+			bind:reminderVetClinic
+			bind:reminderRecurrence
+			message={reminderMessage}
+			{formatReminder}
+			onAddReminder={addReminder}
+			onCompleteReminder={completeReminder}
+			onDeleteReminder={deleteReminder}
+			onRequestNotifications={requestNotifications}
+		/>
+	{:else}
+		<StatsPanel {activities} {dogs} {walkMinutes} {foodCount} />
+		<Timeline
+			activities={sortedActivities}
+			{formatActivity}
+			{clearActivities}
+			onDeleteActivity={deleteActivity}
+		/>
+	{/if}
 </main>
 
-<BottomNav />
+<BottomNav {activeView} onNavigate={navigate} />
 {/if}
 
 <style>
 	:global(body) {
 		margin: 0;
 		min-height: 100vh;
-		background: linear-gradient(180deg, #fbf7f0 0%, #f7f3ec 100%);
+		background: linear-gradient(180deg, #f4f8f6 0%, #edf3ef 100%);
 		color: #17211b;
 		font-family:
 			Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -422,7 +1325,7 @@
 	}
 
 	.app-shell {
-		width: min(100%, 460px);
+		width: min(100%, 480px);
 		min-height: 100vh;
 		margin: 0 auto;
 		padding: 18px 16px 96px;
@@ -433,7 +1336,7 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 16px;
-		margin-bottom: 16px;
+		margin-bottom: 18px;
 	}
 
 	.eyebrow {
@@ -447,20 +1350,8 @@
 
 	h1 {
 		margin: 0;
-		font-size: 1.75rem;
+		font-size: 1.8rem;
 		line-height: 1.1;
-	}
-
-	.icon-button {
-		width: 42px;
-		height: 42px;
-		display: grid;
-		place-items: center;
-		border: 0;
-		border-radius: 8px;
-		background: #ffffff;
-		color: #18544d;
-		box-shadow: 0 8px 20px rgba(39, 117, 108, 0.1);
 	}
 
 	.header-actions {
@@ -472,8 +1363,8 @@
 	.logout-button {
 		min-height: 42px;
 		border: 0;
-		border-radius: 8px;
-		background: #efe7dc;
+		border-radius: 12px;
+		background: #eef2ed;
 		color: #17211b;
 		padding: 0 12px;
 		font-size: 0.82rem;
@@ -482,12 +1373,90 @@
 
 	.status-note {
 		margin: 0 0 12px;
-		border: 1px solid #d6c5a8;
-		border-radius: 8px;
-		background: #fffaf2;
-		color: #6f4d12;
+		border: 1px solid #dfe4dd;
+		border-radius: 12px;
+		background: #ffffff;
+		color: #86532d;
 		padding: 10px 12px;
 		font-size: 0.86rem;
 		line-height: 1.35;
+	}
+
+	.reminder-alert {
+		border: 1px solid #ebb38f;
+		border-radius: 16px;
+		background: #fff7f1;
+		box-shadow: 0 16px 40px rgba(16, 24, 40, 0.08);
+		padding: 16px;
+		margin: 14px 0;
+	}
+
+	.reminder-alert h2 {
+		margin: 0 0 12px;
+		font-size: 1.15rem;
+	}
+
+	.reminder-alert article {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 10px;
+		align-items: center;
+		border-top: 1px solid #f0d7c9;
+		padding: 10px 0;
+	}
+
+	.reminder-alert strong,
+	.reminder-alert span {
+		display: block;
+	}
+
+	.reminder-alert span {
+		margin-top: 3px;
+		color: #66707a;
+		font-size: 0.82rem;
+	}
+
+	.reminder-alert button {
+		min-height: 40px;
+		border: 0;
+		border-radius: 12px;
+		background: #2c6f67;
+		color: white;
+		padding: 0 12px;
+		font-weight: 900;
+	}
+
+	.empty-panel {
+		border: 1px solid #dfe4dd;
+		border-radius: 16px;
+		background: #ffffff;
+		box-shadow: 0 16px 40px rgba(16, 24, 40, 0.08);
+		padding: 18px;
+		margin-top: 14px;
+	}
+
+	.empty-panel h2,
+	.empty-panel p {
+		margin-top: 0;
+	}
+
+	.empty-panel h2 {
+		margin-bottom: 8px;
+		font-size: 1.2rem;
+	}
+
+	.empty-panel p {
+		color: #66707a;
+		line-height: 1.4;
+	}
+
+	.primary-action {
+		min-height: 46px;
+		border: 0;
+		border-radius: 12px;
+		background: #2c6f67;
+		color: white;
+		padding: 0 16px;
+		font-weight: 900;
 	}
 </style>

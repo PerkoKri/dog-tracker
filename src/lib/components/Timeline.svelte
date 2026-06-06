@@ -22,6 +22,23 @@
 						<h3>{activity.dogName} · {activity.type}</h3>
 						<p>{formatActivity(activity)}</p>
 						<p>{activity.note || 'Keine Notiz'}</p>
+						{#if activity.attachment}
+							{@const attachmentUrl = activity.attachment.url || activity.attachment.data}
+							<a
+								class="attachment-link"
+								href={attachmentUrl}
+								download={activity.attachment.name}
+								target="_blank"
+								rel="noreferrer"
+							>
+								{#if activity.attachment.type?.startsWith('image/') && attachmentUrl}
+									<img src={attachmentUrl} alt={activity.attachment.name} />
+								{:else}
+									<span class="file-icon">Dok</span>
+								{/if}
+								<span>{activity.attachment.name}</span>
+							</a>
+						{/if}
 					</div>
 					<button
 						class="delete-button"
@@ -39,10 +56,10 @@
 
 <style>
 	.timeline-panel {
-		border: 1px solid #e3d8c9;
-		border-radius: 8px;
-		background: #fffaf2;
-		box-shadow: 0 18px 44px rgba(40, 33, 24, 0.12);
+		border: 1px solid #dfe4dd;
+		border-radius: 16px;
+		background: #ffffff;
+		box-shadow: 0 16px 40px rgba(16, 24, 40, 0.08);
 		padding: 18px;
 		margin-top: 14px;
 	}
@@ -72,7 +89,7 @@
 	.text-button {
 		border: 0;
 		background: transparent;
-		color: #28756c;
+		color: #2c6f67;
 		font-weight: 900;
 	}
 
@@ -88,7 +105,7 @@
 		align-items: start;
 		gap: 12px;
 		padding: 12px 0;
-		border-top: 1px solid #eee3d6;
+		border-top: 1px solid #edf3ef;
 	}
 
 	.timeline-icon {
@@ -96,8 +113,8 @@
 		height: 40px;
 		display: grid;
 		place-items: center;
-		border-radius: 8px;
-		background: #28756c;
+		border-radius: 12px;
+		background: #2c6f67;
 		color: white;
 		font-weight: 900;
 	}
@@ -113,16 +130,48 @@
 
 	.timeline-item p {
 		margin-top: 3px;
-		color: #6a716c;
+		color: #66707a;
 		font-size: 0.86rem;
 		line-height: 1.35;
+	}
+
+	.attachment-link {
+		display: grid;
+		grid-template-columns: 44px 1fr;
+		align-items: center;
+		gap: 8px;
+		margin-top: 8px;
+		border: 1px solid #dfe4dd;
+		border-radius: 12px;
+		background: #ffffff;
+		color: #1f5f57;
+		padding: 7px;
+		font-size: 0.82rem;
+		font-weight: 850;
+		text-decoration: none;
+	}
+
+	.attachment-link img,
+	.file-icon {
+		width: 44px;
+		height: 44px;
+		border-radius: 7px;
+		object-fit: cover;
+	}
+
+	.file-icon {
+		display: grid;
+		place-items: center;
+		background: #eef6f3;
+		color: #1f5f57;
+		font-size: 0.72rem;
 	}
 
 	.delete-button {
 		width: 34px;
 		height: 34px;
 		border: 0;
-		border-radius: 8px;
+		border-radius: 12px;
 		background: #f7dfd8;
 		color: #8a2b18;
 		font-size: 1.2rem;
@@ -131,9 +180,9 @@
 	}
 
 	.empty-state {
-		border: 1px dashed #d6c5a8;
-		border-radius: 8px;
-		color: #6a716c;
+		border: 1px dashed #d6dfd8;
+		border-radius: 12px;
+		color: #66707a;
 		padding: 18px;
 		text-align: center;
 	}
