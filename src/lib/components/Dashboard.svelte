@@ -211,4 +211,34 @@
 		font-size: 1.15rem;
 		line-height: 1.1;
 	}
+
+	@media (max-width: 380px) {
+		.hero-panel {
+			grid-template-columns: 1fr;
+			gap: 4px;
+			padding: 18px;
+		}
+
+		.hero-copy {
+			justify-content: flex-start;
+		}
+
+		h2 {
+			font-size: 1.35rem;
+		}
+
+		.dog-portrait {
+			justify-self: end;
+			margin-top: -12px;
+		}
+
+		.dog-portrait svg {
+			width: 148px;
+			height: 120px;
+		}
+
+		.stats-grid {
+			grid-template-columns: 1fr;
+		}
+	}
 </style>
