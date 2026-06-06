@@ -1,14 +1,23 @@
 <script>
-	let { activities = [], formatActivity, clearActivities, onDeleteActivity } = $props();
+	let {
+		activities = [],
+		formatActivity,
+		clearActivities = () => {},
+		onDeleteActivity,
+		title = 'Letzte Einträge',
+		showClear = true
+	} = $props();
 </script>
 
 <section class="timeline-panel" aria-labelledby="timeline-title">
 	<div class="section-heading">
 		<div>
 			<p class="eyebrow">Verlauf</p>
-			<h2 id="timeline-title">Letzte Einträge</h2>
+			<h2 id="timeline-title">{title}</h2>
 		</div>
-		<button class="text-button" type="button" onclick={clearActivities}>Leeren</button>
+		{#if showClear}
+			<button class="text-button" type="button" onclick={clearActivities}>Leeren</button>
+		{/if}
 	</div>
 
 	<div class="timeline">

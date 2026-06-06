@@ -3,8 +3,10 @@
 	import MedicationFields from '$lib/components/fields/MedicationFields.svelte';
 	import WalkFields from '$lib/components/fields/WalkFields.svelte';
 	import {
+		displayQuantity,
 		foodUnitOptions,
 		medicationUnitOptions,
+		walkDurationUnitOptions,
 		resolveUnitValue,
 		unitPresetForValue
 	} from '$lib/forms/routine-fields.js';
@@ -21,11 +23,9 @@
 	let draftName = $state('');
 	let draftBreed = $state('');
 	let draftHint = $state('');
-	let draftWalkTime = $state('');
-	let draftWalkDuration = $state(30);
-	let draftWalkDurationUnit = $state('Minuten');
 	let draftMessage = $state('');
 	let isSaving = $state(false);
+	let isExpanded = $state(false);
 
 	let feedingTitle = $state('');
 	let feedingTime = $state('07:00');
@@ -42,6 +42,12 @@
 	let medicationTime = $state('08:00');
 	let medicationEditIndex = $state(-1);
 	let medicationSchedules = $state([]);
+
+	let walkTime = $state('');
+	let walkDuration = $state(30);
+	let walkDurationUnit = $state('Minuten');
+	let walkEditIndex = $state(-1);
+	let walkSchedules = $state([]);
 
 	let dossierTitle = $state('');
 	let dossierFileName = $state('');
@@ -98,21 +104,19 @@
 		draftName = '';
 		draftBreed = '';
 		draftHint = '';
-		draftWalkTime = '';
-		draftWalkDuration = 30;
-		draftWalkDurationUnit = 'Minuten';
 		draftMessage = '';
 		feedingSchedules = [];
 		medicationSchedules = [];
+		walkSchedules = [];
 		dossierItems = [];
 		resetFeedingDraft();
 		resetMedicationDraft();
+		resetWalkDraft();
 		resetDossierDraft();
 	}
 
 	function validateDogDraft() {
 		if (!draftName.trim()) return 'Hundename fehlt.';
-		if (!draftBreed.trim()) return 'Rasse fehlt.';
 		return '';
 	}
 
@@ -214,6 +218,59 @@
 		if (medicationEditIndex === index) resetMedicationDraft();
 	}
 
+	function resetWalkDraft() {
+		walkTime = '';
+		walkDuration = 30;
+		walkDurationUnit = 'Minuten';
+		walkEditIndex = -1;
+	}
+
+	function upsertWalkSchedule() {
+		const title = 'Gassi gehen';
+		const schedule = {
+			id: walkEditIndex >= 0 ? walkSchedules[walkEditIndex]?.id || createLocalId() : createLocalId(),
+			title,
+			name: title,
+			time: walkTime,
+			amount: Number(walkDuration) || 0,
+			unit: resolveUnit(walkDurationUnit, '')
+		};
+
+		if (!schedule.time) {
+			draftMessage = 'Bitte eine Gassi-Zeit wählen.';
+			return;
+		}
+		if (schedule.amount <= 0) {
+			draftMessage = 'Bitte eine gültige Dauer angeben.';
+			return;
+		}
+		if (!schedule.unit.trim()) {
+			draftMessage = 'Bitte eine Dauer-Einheit wählen.';
+			return;
+		}
+
+		walkSchedules =
+			walkEditIndex >= 0
+				? walkSchedules.map((item, index) => (index === walkEditIndex ? schedule : item))
+				: [...walkSchedules, schedule];
+		resetWalkDraft();
+		draftMessage = '';
+	}
+
+	function editWalkSchedule(index) {
+		const schedule = walkSchedules[index];
+		if (!schedule) return;
+		walkTime = schedule.time || '';
+		walkDuration = schedule.amount || 30;
+		walkDurationUnit = unitPresetForValue(schedule.unit, walkDurationUnitOptions, 'Minuten');
+		walkEditIndex = index;
+	}
+
+	function deleteWalkSchedule(index) {
+		walkSchedules = walkSchedules.filter((_, current) => current !== index);
+		if (walkEditIndex === index) resetWalkDraft();
+	}
+
 	function handleDossierFile(event) {
 		const file = event.currentTarget.files?.[0];
 		draftMessage = '';
@@ -280,9 +337,7 @@
 				name: draftName.trim(),
 				breed: draftBreed.trim(),
 				hint: draftHint.trim(),
-				walkTime: draftWalkTime,
-				walkDuration: Number(draftWalkDuration) || 30,
-				walkDurationUnit: draftWalkDurationUnit,
+				walkSchedules,
 				feedingSchedules,
 				medicationSchedules,
 				dossier: dossierItems
@@ -290,6 +345,7 @@
 
 			if (saved?.name) {
 				dogName = saved.name;
+				isExpanded = false;
 				resetDraft();
 				draftMessage = `${saved.name} wurde gespeichert.`;
 			}
@@ -307,7 +363,14 @@
 			<p class="eyebrow">Konto</p>
 			<h2 id="dogs-title">Hunde verwalten</h2>
 		</div>
-		<span class="account-pill">{user?.email}</span>
+		<div class="header-actions">
+			{#if dogs.length > 0}
+				<button class="toggle-button" type="button" onclick={() => (isExpanded = !isExpanded)}>
+					{isExpanded ? 'Einklappen' : 'Aufklappen'}
+				</button>
+			{/if}
+			<span class="account-pill">{user?.email}</span>
+		</div>
 	</div>
 
 	{#if successMessage}
@@ -317,248 +380,318 @@
 		<p class="draft-note">{draftMessage}</p>
 	{/if}
 
-	<div class="active-row">
-		{#if dogs.length === 0}
-			<div class="first-dog-note">
-				<strong>Noch kein Hund erfasst.</strong>
-				<span>Lege deinen ersten Hund an, damit du danach Aktivitäten und Erinnerungen nutzen kannst.</span>
-			</div>
-		{:else}
-			<label>
-				Aktiver Hund
-				<select bind:value={dogName}>
-					{#each dogs as dog}
-						<option value={dog.name}>{dog.name}</option>
-					{/each}
-				</select>
-			</label>
-		{/if}
-	</div>
-
-	<div class="dog-list" aria-label="Gespeicherte Hunde">
-		{#each dogs as dog}
-			<article class:active={dog.name === dogName}>
-				<button type="button" onclick={() => (dogName = dog.name)}>
-					<strong>{dog.name}</strong>
-					<span>{dog.breed || 'Rasse'}</span>
-				</button>
-				{#if dogs.length > 1}
-					<button class="delete-button" type="button" onclick={() => onDeleteDog(dog)}>Löschen</button>
-				{/if}
-			</article>
-		{/each}
-	</div>
-
-	{#if activeDog}
-		<div class="dossier-preview">
-			<div class="section-heading compact">
-				<div>
-					<p class="eyebrow">Hundedossier</p>
-					<h3>{activeDog.name}</h3>
+	{#if isExpanded || dogs.length === 0}
+		<div class="active-row">
+			{#if dogs.length === 0}
+				<div class="first-dog-note">
+					<strong>Noch kein Hund erfasst.</strong>
+					<span>Lege deinen ersten Hund an, damit du danach Aktivitäten und Erinnerungen nutzen kannst.</span>
 				</div>
-				<span class="muted">{activeDog.dossier?.length || 0} Dokumente</span>
-			</div>
-
-			{#if activeDog.hint}
-				<p class="hint-note">{activeDog.hint}</p>
+			{:else}
+				<label>
+					Aktiver Hund
+					<select bind:value={dogName}>
+						{#each dogs as dog}
+							<option value={dog.name}>{dog.name}</option>
+						{/each}
+					</select>
+				</label>
 			{/if}
+		</div>
 
-			<div class="schedule-preview">
-				{#each activeDog.feedingSchedules || [] as schedule}
-					<span>{schedule.title || schedule.name || 'Futter'} {schedule.time} · {schedule.amount} {schedule.unit}</span>
-				{/each}
-				{#each activeDog.medicationSchedules || [] as schedule}
-					<span>{schedule.title || schedule.name || 'Medikament'} {schedule.time} · {schedule.dose} {schedule.unit}</span>
-				{/each}
-				{#if activeDog.walkTime}
-					<span>
-						Gassi {activeDog.walkTime} · {activeDog.walkDuration || 30} {activeDog.walkDurationUnit || 'Minuten'}
-					</span>
+		<div class="dog-list" aria-label="Gespeicherte Hunde">
+			{#each dogs as dog}
+				<article class:active={dog.name === dogName}>
+					<button type="button" onclick={() => (dogName = dog.name)}>
+						<strong>{dog.name}</strong>
+						<span>{dog.breed || 'Rasse optional'}</span>
+					</button>
+					{#if dogs.length > 1}
+						<button class="delete-button" type="button" onclick={() => onDeleteDog(dog)}>Löschen</button>
+					{/if}
+				</article>
+			{/each}
+		</div>
+
+		{#if activeDog}
+			<div class="dossier-preview">
+				<div class="section-heading compact">
+					<div>
+						<p class="eyebrow">Hundedossier</p>
+						<h3>{activeDog.name}</h3>
+					</div>
+					<span class="muted">{activeDog.dossier?.length || 0} Dokumente</span>
+				</div>
+
+				{#if activeDog.hint}
+					<p class="hint-note">{activeDog.hint}</p>
 				{/if}
+
+				<div class="schedule-preview">
+					{#each activeDog.feedingSchedules || [] as schedule}
+						<span>Futter · {schedule.time} · {displayQuantity(schedule.amount, schedule.unit)}</span>
+					{/each}
+					{#each activeDog.medicationSchedules || [] as schedule}
+						<span>Medikament · {schedule.time} · {displayQuantity(schedule.dose, schedule.unit)}</span>
+					{/each}
+					{#each activeDog.walkSchedules || [] as schedule}
+						<span>Gassi · {schedule.time} · {displayQuantity(schedule.amount, schedule.unit)}</span>
+					{/each}
+				</div>
+
+				<div class="dossier-grid">
+					{#each activeDog.dossier || [] as item}
+						<a class="dossier-link" href={item.file?.url} target="_blank" rel="noreferrer">
+							<strong>{item.title}</strong>
+							<span>{item.file?.name} · {formatFileSize(item.file?.size)}</span>
+						</a>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
+		<div class="editor-shell">
+			<div class="editor-section">
+				<div class="section-heading compact">
+					<div>
+						<p class="eyebrow">Stammdaten</p>
+						<h3>Neuen Hund anlegen</h3>
+					</div>
+					<span class="muted">Pflicht ist nur der Name.</span>
+				</div>
+
+				<div class="form-grid">
+					<label>
+						Hundename *
+						<input bind:value={draftName} placeholder="z. B. Milo" />
+					</label>
+					<label>
+						Rasse (optional)
+						<input bind:value={draftBreed} placeholder="z. B. Labrador" />
+					</label>
+				</div>
+				<p class="optional-note">Rasse, Futter, Medikamente, Gassi und Dossier sind optional und können später ergänzt werden.</p>
+				<label>
+					Hinweis (optional)
+					<textarea bind:value={draftHint} rows="3" placeholder="z. B. ruhig, sportlich, sensibel"></textarea>
+				</label>
 			</div>
 
-			<div class="dossier-grid">
-				{#each activeDog.dossier || [] as item}
-					<a class="dossier-link" href={item.file?.url} target="_blank" rel="noreferrer">
-						<strong>{item.title}</strong>
-						<span>{item.file?.name} · {formatFileSize(item.file?.size)}</span>
-					</a>
-				{/each}
+			<div class="editor-section">
+				<div class="section-heading compact">
+					<div>
+						<p class="eyebrow">Futter</p>
+						<h3>Optional</h3>
+					</div>
+				</div>
+
+				<FoodFields
+					bind:title={feedingTitle}
+					bind:time={feedingTime}
+					bind:amount={feedingAmount}
+					bind:unitPreset={feedingUnitPreset}
+					bind:unitCustom={feedingUnitCustom}
+				/>
+
+				<div class="inline-actions">
+					<button class="primary-button" type="button" onclick={upsertFeedingSchedule}>
+						{feedingEditIndex >= 0 ? 'Futter aktualisieren' : 'Futter hinzufügen'}
+					</button>
+					{#if feedingEditIndex >= 0}
+						<button class="secondary-button" type="button" onclick={resetFeedingDraft}>Abbrechen</button>
+					{/if}
+				</div>
+
+				<div class="item-list">
+					{#if feedingSchedules.length === 0}
+						<div class="empty-state">Noch keine Futter-Routine hinterlegt.</div>
+					{:else}
+						{#each feedingSchedules as schedule, index}
+							<div class="item-row">
+								<div>
+									<strong>{schedule.title || schedule.name || 'Futter'}</strong>
+									<span>{schedule.time} · {displayQuantity(schedule.amount, schedule.unit)}</span>
+								</div>
+								<div class="item-actions">
+									<button type="button" onclick={() => editFeedingSchedule(index)}>Bearbeiten</button>
+									<button type="button" onclick={() => deleteFeedingSchedule(index)}>Löschen</button>
+								</div>
+							</div>
+						{/each}
+					{/if}
+				</div>
+			</div>
+
+			<div class="editor-section">
+				<div class="section-heading compact">
+					<div>
+						<p class="eyebrow">Medikamente</p>
+						<h3>Optional</h3>
+					</div>
+				</div>
+
+				<MedicationFields
+					bind:title={medicationTitle}
+					bind:time={medicationTime}
+					bind:amount={medicationDose}
+					bind:unitPreset={medicationUnitPreset}
+					bind:unitCustom={medicationUnitCustom}
+				/>
+
+				<div class="inline-actions">
+					<button class="primary-button" type="button" onclick={upsertMedicationSchedule}>
+						{medicationEditIndex >= 0 ? 'Medikament aktualisieren' : 'Medikament hinzufügen'}
+					</button>
+					{#if medicationEditIndex >= 0}
+						<button class="secondary-button" type="button" onclick={resetMedicationDraft}>Abbrechen</button>
+					{/if}
+				</div>
+
+				<div class="item-list">
+					{#if medicationSchedules.length === 0}
+						<div class="empty-state">Noch keine Medikamenten-Routine hinterlegt.</div>
+					{:else}
+						{#each medicationSchedules as schedule, index}
+							<div class="item-row">
+								<div>
+									<strong>{schedule.title || schedule.name || 'Medikament'}</strong>
+									<span>{schedule.time} · {displayQuantity(schedule.dose, schedule.unit)}</span>
+								</div>
+								<div class="item-actions">
+									<button type="button" onclick={() => editMedicationSchedule(index)}>Bearbeiten</button>
+									<button type="button" onclick={() => deleteMedicationSchedule(index)}>Löschen</button>
+								</div>
+							</div>
+						{/each}
+					{/if}
+				</div>
+			</div>
+
+			<div class="editor-section">
+				<div class="section-heading compact">
+					<div>
+						<p class="eyebrow">Gassi</p>
+						<h3>Optional</h3>
+					</div>
+				</div>
+
+				<WalkFields
+					bind:time={walkTime}
+					bind:amount={walkDuration}
+					bind:unitPreset={walkDurationUnit}
+					timeLabel="Gassi-Zeit"
+					amountLabel="Dauer"
+					unitLabel="Dauer-Einheit"
+				/>
+
+				<div class="inline-actions">
+					<button class="primary-button" type="button" onclick={upsertWalkSchedule}>
+						{walkEditIndex >= 0 ? 'Gassi aktualisieren' : 'Gassi hinzufügen'}
+					</button>
+					{#if walkEditIndex >= 0}
+						<button class="secondary-button" type="button" onclick={resetWalkDraft}>Abbrechen</button>
+					{/if}
+				</div>
+
+				<div class="item-list">
+					{#if walkSchedules.length === 0}
+						<div class="empty-state">Noch keine Gassi-Zeiten hinterlegt.</div>
+					{:else}
+						{#each walkSchedules as schedule, index}
+							<div class="item-row">
+								<div>
+									<strong>{schedule.title || 'Gassi gehen'}</strong>
+									<span>{schedule.time} · {displayQuantity(schedule.amount, schedule.unit)}</span>
+								</div>
+								<div class="item-actions">
+									<button type="button" onclick={() => editWalkSchedule(index)}>Bearbeiten</button>
+									<button type="button" onclick={() => deleteWalkSchedule(index)}>Löschen</button>
+								</div>
+							</div>
+						{/each}
+					{/if}
+				</div>
+			</div>
+
+			<div class="editor-section">
+				<div class="section-heading compact">
+					<div>
+						<p class="eyebrow">Dossier</p>
+						<h3>Optional</h3>
+					</div>
+				</div>
+
+				<div class="form-grid">
+					<label>
+						Titel
+						<input bind:value={dossierTitle} placeholder="z. B. Impfpass" />
+					</label>
+					<label>
+						Datei
+						<input
+							type="file"
+							accept="image/*,.pdf,.txt,.doc,.docx"
+							onchange={handleDossierFile}
+						/>
+					</label>
+				</div>
+
+				{#if dossierFileName}
+					<div class="file-chip">
+						<strong>{dossierFileName}</strong>
+						<span>{dossierFileType || 'Datei'} · {formatFileSize(dossierFileSize)}</span>
+					</div>
+				{/if}
+
+				<div class="inline-actions">
+					<button class="primary-button" type="button" onclick={addDossierItem}>Dossier-Eintrag hinzufügen</button>
+					{#if dossierItems.length > 0}
+						<button class="secondary-button" type="button" onclick={resetDossierDraft}>Datei entfernen</button>
+					{/if}
+				</div>
+
+				<div class="item-list">
+					{#if dossierItems.length === 0}
+						<div class="empty-state">Noch keine Dossier-Datei ausgewählt.</div>
+					{:else}
+						{#each dossierItems as item, index}
+							<div class="item-row">
+								<div>
+									<strong>{item.title}</strong>
+									<span>{item.fileName} · {formatFileSize(item.fileSize)}</span>
+								</div>
+								<button type="button" onclick={() => removeDossierItem(index)}>Löschen</button>
+							</div>
+						{/each}
+					{/if}
+				</div>
+			</div>
+		</div>
+
+		<div class="save-row">
+			<button class="primary-button save-button" type="button" disabled={isSaving} onclick={submitDog}>
+				{isSaving ? 'Speichert...' : 'Hund speichern'}
+			</button>
+		</div>
+	{:else}
+		<div class="collapsed-shell">
+			<div>
+				<p class="eyebrow">Hunde verwalten</p>
+				<h2>{activeDog ? activeDog.name : 'Deine Hunde'}</h2>
+				<p>
+					{dogs.length} Hund{dogs.length === 1 ? '' : 'e'} gespeichert. Rasse, Futter, Medikamente, Gassi und Dossier
+					sind optional.
+				</p>
+			</div>
+			<div class="collapsed-actions">
+				<span class="muted">
+					{activeDog?.feedingSchedules?.length || 0} Futter · {activeDog?.medicationSchedules?.length || 0}
+					Medikamente · {activeDog?.walkSchedules?.length || 0} Gassi
+				</span>
+				<button class="secondary-button" type="button" onclick={() => (isExpanded = true)}>Aufklappen</button>
 			</div>
 		</div>
 	{/if}
-
-	<div class="editor-shell">
-		<div class="editor-section">
-			<div class="section-heading compact">
-				<div>
-					<p class="eyebrow">Stammdaten</p>
-					<h3>Neuen Hund anlegen</h3>
-				</div>
-			</div>
-
-			<div class="form-grid">
-				<label>
-					Hundename *
-					<input bind:value={draftName} placeholder="z. B. Milo" />
-				</label>
-				<label>
-					Rasse *
-					<input bind:value={draftBreed} placeholder="z. B. Labrador" />
-				</label>
-			</div>
-			<label>
-				Hinweis
-				<textarea bind:value={draftHint} rows="3" placeholder="optional"></textarea>
-			</label>
-			<WalkFields
-				bind:time={draftWalkTime}
-				bind:amount={draftWalkDuration}
-				bind:unitPreset={draftWalkDurationUnit}
-				timeLabel="Optionale Gassi-Zeit"
-				amountLabel="Geplante Dauer"
-				unitLabel="Dauer-Einheit"
-			/>
-		</div>
-
-		<div class="editor-section">
-			<div class="section-heading compact">
-				<div>
-					<p class="eyebrow">Futter</p>
-					<h3>Mehrere Futterzeiten</h3>
-				</div>
-			</div>
-
-			<FoodFields
-				bind:title={feedingTitle}
-				bind:time={feedingTime}
-				bind:amount={feedingAmount}
-				bind:unitPreset={feedingUnitPreset}
-				bind:unitCustom={feedingUnitCustom}
-			/>
-
-			<div class="inline-actions">
-				<button class="primary-button" type="button" onclick={upsertFeedingSchedule}>
-					{feedingEditIndex >= 0 ? 'Futterzeit aktualisieren' : 'Futterzeit hinzufügen'}
-				</button>
-				{#if feedingEditIndex >= 0}
-					<button class="secondary-button" type="button" onclick={resetFeedingDraft}>Abbrechen</button>
-				{/if}
-			</div>
-
-			<div class="item-list">
-				{#each feedingSchedules as schedule, index}
-					<div class="item-row">
-						<div>
-							<strong>{schedule.title || schedule.name || 'Futter'}</strong>
-							<span>{schedule.time} · {schedule.amount} {schedule.unit}</span>
-						</div>
-						<div class="item-actions">
-							<button type="button" onclick={() => editFeedingSchedule(index)}>Bearbeiten</button>
-							<button type="button" onclick={() => deleteFeedingSchedule(index)}>Löschen</button>
-						</div>
-					</div>
-				{/each}
-			</div>
-		</div>
-
-		<div class="editor-section">
-			<div class="section-heading compact">
-				<div>
-					<p class="eyebrow">Medikamente</p>
-					<h3>Mehrere Einnahmen</h3>
-				</div>
-			</div>
-
-			<MedicationFields
-				bind:title={medicationTitle}
-				bind:time={medicationTime}
-				bind:amount={medicationDose}
-				bind:unitPreset={medicationUnitPreset}
-				bind:unitCustom={medicationUnitCustom}
-			/>
-
-			<div class="inline-actions">
-				<button class="primary-button" type="button" onclick={upsertMedicationSchedule}>
-					{medicationEditIndex >= 0 ? 'Medikament aktualisieren' : 'Medikament hinzufügen'}
-				</button>
-				{#if medicationEditIndex >= 0}
-					<button class="secondary-button" type="button" onclick={resetMedicationDraft}>Abbrechen</button>
-				{/if}
-			</div>
-
-			<div class="item-list">
-				{#each medicationSchedules as schedule, index}
-					<div class="item-row">
-						<div>
-							<strong>{schedule.title || schedule.name || 'Medikament'}</strong>
-							<span>{schedule.dose} {schedule.unit} · {schedule.time}</span>
-						</div>
-						<div class="item-actions">
-							<button type="button" onclick={() => editMedicationSchedule(index)}>Bearbeiten</button>
-							<button type="button" onclick={() => deleteMedicationSchedule(index)}>Löschen</button>
-						</div>
-					</div>
-				{/each}
-			</div>
-		</div>
-
-		<div class="editor-section">
-			<div class="section-heading compact">
-				<div>
-					<p class="eyebrow">Dossier</p>
-					<h3>Dokumente schon beim Anlegen</h3>
-				</div>
-			</div>
-
-			<div class="form-grid">
-				<label>
-					Titel
-					<input bind:value={dossierTitle} placeholder="z. B. Impfpass" />
-				</label>
-				<label>
-					Datei
-					<input
-						type="file"
-						accept="image/*,.pdf,.txt,.doc,.docx"
-						onchange={handleDossierFile}
-					/>
-				</label>
-			</div>
-
-			{#if dossierFileName}
-				<div class="file-chip">
-					<strong>{dossierFileName}</strong>
-					<span>{dossierFileType || 'Datei'} · {formatFileSize(dossierFileSize)}</span>
-				</div>
-			{/if}
-
-			<div class="inline-actions">
-				<button class="primary-button" type="button" onclick={addDossierItem}>Dossier-Eintrag hinzufügen</button>
-				{#if dossierItems.length > 0}
-					<button class="secondary-button" type="button" onclick={resetDossierDraft}>Datei entfernen</button>
-				{/if}
-			</div>
-
-			<div class="item-list">
-				{#each dossierItems as item, index}
-					<div class="item-row">
-						<div>
-							<strong>{item.title}</strong>
-							<span>{item.fileName} · {formatFileSize(item.fileSize)}</span>
-						</div>
-						<button type="button" onclick={() => removeDossierItem(index)}>Löschen</button>
-					</div>
-				{/each}
-			</div>
-		</div>
-	</div>
-
-	<div class="save-row">
-		<button class="primary-button save-button" type="button" disabled={isSaving} onclick={submitDog}>
-			{isSaving ? 'Speichert...' : 'Hund speichern'}
-		</button>
-	</div>
 </section>
 
 <style>
@@ -622,6 +755,21 @@
 		white-space: nowrap;
 	}
 
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.toggle-button {
+		border: 1px solid #d6dfd8;
+		border-radius: 999px;
+		background: #f7faf8;
+		color: #1f5f57;
+		padding: 8px 12px;
+		font-weight: 850;
+	}
+
 	.success-note,
 	.draft-note,
 	.first-dog-note,
@@ -661,6 +809,43 @@
 		padding: 14px;
 		display: grid;
 		gap: 4px;
+	}
+
+	.optional-note {
+		border-radius: 12px;
+		background: #f6faf8;
+		color: #5d6e64;
+		padding: 10px 12px;
+		font-size: 0.83rem;
+		line-height: 1.35;
+	}
+
+	.collapsed-shell {
+		border: 1px solid #dfe4dd;
+		border-radius: 16px;
+		background: #f8fbf9;
+		padding: 16px;
+		display: grid;
+		gap: 14px;
+	}
+
+	.collapsed-shell h2 {
+		font-size: 1.08rem;
+		margin-top: 4px;
+	}
+
+	.collapsed-shell p {
+		color: #5d6e64;
+		font-size: 0.88rem;
+		line-height: 1.4;
+	}
+
+	.collapsed-actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		flex-wrap: wrap;
 	}
 
 	.dog-list {

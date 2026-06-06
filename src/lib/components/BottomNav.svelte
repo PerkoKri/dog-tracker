@@ -18,9 +18,9 @@
 			path: 'M7 3v4'
 		},
 		{
-			id: 'stats',
-			label: 'Statistik',
-			path: 'M4 19V5'
+			id: 'history',
+			label: 'Verlauf',
+			path: 'M5 6h14M5 12h14M5 18h10'
 		}
 	];
 </script>
@@ -38,8 +38,8 @@
 					<path d={item.path} /><path d="M12 5v14" />
 				{:else if item.id === 'planner'}
 					<path d={item.path} /><path d="M17 3v4" /><path d="M4 9h16" /><path d="M5 5h14v15H5Z" />
-				{:else if item.id === 'stats'}
-					<path d={item.path} /><path d="M8 17v-6" /><path d="M13 17V7" /><path d="M18 17v-9" />
+				{:else if item.id === 'history'}
+					<path d={item.path} />
 				{:else}
 					<path d={item.path} />
 				{/if}

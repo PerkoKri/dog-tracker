@@ -6,7 +6,6 @@
 	import DogManager from '$lib/components/DogManager.svelte';
 	import EntryForm from '$lib/components/EntryForm.svelte';
 	import PlannerPanel from '$lib/components/PlannerPanel.svelte';
-	import StatsPanel from '$lib/components/StatsPanel.svelte';
 	import Timeline from '$lib/components/Timeline.svelte';
 	import {
 		displayQuantity,
@@ -196,16 +195,46 @@
 					]
 				: [];
 
-		const walkDuration = normalizePositiveAmount(dog.walkDuration, 30);
-		const walkDurationUnit = unitPresetForValue(dog.walkDurationUnit, walkDurationUnitOptions, 'Minuten');
+		const walkSchedules = Array.isArray(dog.walkSchedules) && dog.walkSchedules.length
+			? dog.walkSchedules
+					.map((schedule) => ({
+						id: schedule?.id || createLocalId(),
+						title: schedule?.title || schedule?.name || 'Gassi gehen',
+						name: schedule?.name || schedule?.title || 'Gassi gehen',
+						time: normalizeTime(schedule?.time),
+						amount: normalizePositiveAmount(schedule?.amount, 30),
+						unit: schedule?.unit || 'Minuten'
+					}))
+					.filter((schedule) => schedule.time && schedule.amount > 0)
+			: dog.walkTime
+				? [
+						{
+							id: createLocalId(),
+							title: 'Gassi gehen',
+							name: 'Gassi gehen',
+							time: normalizeTime(dog.walkTime),
+							amount: normalizePositiveAmount(dog.walkDuration, 30),
+							unit: unitPresetForValue(dog.walkDurationUnit, walkDurationUnitOptions, 'Minuten')
+						}
+					]
+				: [];
+
+		const firstWalk = walkSchedules[0];
+		const walkDuration = firstWalk?.amount || normalizePositiveAmount(dog.walkDuration, 30);
+		const walkDurationUnit = unitPresetForValue(
+			firstWalk?.unit || dog.walkDurationUnit,
+			walkDurationUnitOptions,
+			'Minuten'
+		);
 
 		return {
 			...dog,
 			hint: dog.hint || '',
 			feedingSchedules,
 			medicationSchedules,
+			walkSchedules,
 			dossier: Array.isArray(dog.dossier) ? dog.dossier : [],
-			walkTime: dog.walkTime || '',
+			walkTime: firstWalk?.time || dog.walkTime || '',
 			walkDuration,
 			walkDurationUnit,
 			feedingTime: feedingSchedules[0]?.time || '',
@@ -382,9 +411,19 @@
 		const remindersToCreate = [];
 		const feedingSchedules = Array.isArray(dog.feedingSchedules) ? dog.feedingSchedules : [];
 		const medicationSchedules = Array.isArray(dog.medicationSchedules) ? dog.medicationSchedules : [];
-		const walkTime = normalizeTime(dog.walkTime);
-		const walkDuration = normalizePositiveAmount(dog.walkDuration, 30);
-		const walkDurationUnit = unitPresetForValue(dog.walkDurationUnit, walkDurationUnitOptions, 'Minuten');
+		const walkSchedules = Array.isArray(dog.walkSchedules) && dog.walkSchedules.length
+			? dog.walkSchedules
+			: dog.walkTime
+				? [
+						{
+							title: 'Gassi gehen',
+							name: 'Gassi gehen',
+							time: normalizeTime(dog.walkTime),
+							amount: normalizePositiveAmount(dog.walkDuration, 30),
+							unit: unitPresetForValue(dog.walkDurationUnit, walkDurationUnitOptions, 'Minuten')
+						}
+					]
+				: [];
 
 		for (const schedule of feedingSchedules) {
 			if (!schedule?.time || Number(schedule.amount) <= 0) continue;
@@ -418,15 +457,16 @@
 			});
 		}
 
-		if (walkTime) {
+		for (const schedule of walkSchedules) {
+			if (!schedule?.time || Number(schedule.amount) <= 0) continue;
 			remindersToCreate.push({
 				dogName: dog.name,
 				type: 'Gassi',
-				title: 'Gassi gehen',
+				title: schedule.title || schedule.name || 'Gassi gehen',
 				date: todayDate(),
-				time: walkTime,
-				amount: walkDuration,
-				unit: walkDurationUnit,
+				time: schedule.time,
+				amount: Number(schedule.amount),
+				unit: schedule.unit || 'Minuten',
 				recurrence: 'daily'
 			});
 		}
@@ -437,8 +477,8 @@
 	async function addDog(payload) {
 		const name = payload?.name?.trim();
 		const breed = payload?.breed?.trim();
-		if (!name || !breed) {
-			throw new Error('Hundename und Rasse sind Pflichtfelder.');
+		if (!name) {
+			throw new Error('Hundename fehlt.');
 		}
 
 		const dossier = [];
@@ -463,16 +503,22 @@
 
 			const feedingSchedules = Array.isArray(payload.feedingSchedules) ? payload.feedingSchedules : [];
 			const medicationSchedules = Array.isArray(payload.medicationSchedules) ? payload.medicationSchedules : [];
+			const walkSchedules = Array.isArray(payload.walkSchedules) ? payload.walkSchedules : [];
 			const routine = {
 				name,
 				breed,
 				hint: payload.hint || '',
 				feedingSchedules,
 				medicationSchedules,
+				walkSchedules,
 				dossier,
-				walkTime: normalizeTime(payload.walkTime),
-				walkDuration: normalizePositiveAmount(payload.walkDuration, 30),
-				walkDurationUnit: unitPresetForValue(payload.walkDurationUnit, walkDurationUnitOptions, 'Minuten')
+				walkTime: walkSchedules[0]?.time || normalizeTime(payload.walkTime),
+				walkDuration: walkSchedules[0]?.amount || normalizePositiveAmount(payload.walkDuration, 30),
+				walkDurationUnit: unitPresetForValue(
+					walkSchedules[0]?.unit || payload.walkDurationUnit,
+					walkDurationUnitOptions,
+					'Minuten'
+				)
 			};
 
 			const response = await fetch('/api/dogs', {
@@ -1111,7 +1157,7 @@
 		}
 
 		activities = [];
-			localStorage.setItem(activityStorageKey(), JSON.stringify([]));
+		localStorage.setItem(activityStorageKey(), JSON.stringify([]));
 	}
 
 	async function deleteActivity(activity) {
@@ -1173,32 +1219,44 @@
 		<p class="status-note">{statusMessage}</p>
 	{/if}
 
-	<Dashboard
-		{latestActivity}
-		{walkMinutes}
-		{foodCount}
-		{formatActivity}
-		isLoading={isLoading}
-		hasDogs={dogs.length > 0}
-	/>
-
-	{#if dueReminders.length > 0}
-		<section class="reminder-alert" aria-labelledby="due-title">
-			<p class="eyebrow">Jetzt fällig</p>
-			<h2 id="due-title">Erinnerung offen</h2>
-			{#each dueReminders.slice(0, 3) as reminder}
-				<article>
-					<div>
-						<strong>{reminder.title}</strong>
-						<span>{formatReminder(reminder)}</span>
-					</div>
-					<button type="button" onclick={() => completeReminder(reminder)}>Erledigt</button>
-				</article>
-			{/each}
-		</section>
-	{/if}
-
 	{#if activeView === 'home'}
+		<Dashboard
+			{latestActivity}
+			{walkMinutes}
+			{foodCount}
+			{formatActivity}
+			isLoading={isLoading}
+			hasDogs={dogs.length > 0}
+		/>
+
+		<section class="quick-actions" aria-label="Schnellzugriff">
+			<button class="primary-action" type="button" onclick={() => navigate('capture')}>
+				Aktivität erfassen
+			</button>
+			<button class="secondary-action" type="button" onclick={() => navigate('planner')}>
+				Neue Aufgabe
+			</button>
+			<button class="secondary-action" type="button" onclick={() => navigate('history')}>
+				Verlauf öffnen
+			</button>
+		</section>
+
+		{#if dueReminders.length > 0}
+			<section class="reminder-alert" aria-labelledby="due-title">
+				<p class="eyebrow">Jetzt fällig</p>
+				<h2 id="due-title">Erinnerung offen</h2>
+				{#each dueReminders.slice(0, 3) as reminder}
+					<article>
+						<div>
+							<strong>{reminder.title}</strong>
+							<span>{formatReminder(reminder)}</span>
+						</div>
+						<button type="button" onclick={() => completeReminder(reminder)}>Erledigt</button>
+					</article>
+				{/each}
+			</section>
+		{/if}
+
 		<DogManager
 			{user}
 			{dogs}
@@ -1209,7 +1267,9 @@
 		/>
 
 		<Timeline
-			activities={sortedActivities.slice(0, 4)}
+			title="Letzte 5 Einträge"
+			showClear={false}
+			activities={sortedActivities.slice(0, 5)}
 			{formatActivity}
 			{clearActivities}
 			onDeleteActivity={deleteActivity}
@@ -1276,8 +1336,8 @@
 			onRequestNotifications={requestNotifications}
 		/>
 	{:else}
-		<StatsPanel {activities} {dogs} {walkMinutes} {foodCount} />
 		<Timeline
+			title="Gesamter Verlauf"
 			activities={sortedActivities}
 			{formatActivity}
 			{clearActivities}
@@ -1382,6 +1442,23 @@
 		line-height: 1.35;
 	}
 
+	.quick-actions {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 10px;
+		margin: 14px 0;
+	}
+
+	.secondary-action {
+		min-height: 46px;
+		border: 1px solid #d6dfd8;
+		border-radius: 12px;
+		background: #f7faf8;
+		color: #1f5f57;
+		padding: 0 12px;
+		font-weight: 850;
+	}
+
 	.reminder-alert {
 		border: 1px solid #ebb38f;
 		border-radius: 16px;
@@ -1458,5 +1535,11 @@
 		color: white;
 		padding: 0 16px;
 		font-weight: 900;
+	}
+
+	@media (max-width: 640px) {
+		.quick-actions {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>

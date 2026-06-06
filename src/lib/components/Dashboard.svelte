@@ -36,23 +36,25 @@
 
 	<div class="dog-portrait" aria-hidden="true">
 		<svg viewBox="0 0 220 180">
-			<path class="sun" d="M168 34a22 22 0 1 1-44 0 22 22 0 0 1 44 0Z" />
-			<path class="ground" d="M24 144c30-18 55-9 83-4 36 6 56-8 89 8v18H24Z" />
+			<rect class="schedule-card" x="20" y="30" width="86" height="96" rx="22" />
+			<path class="card-ring" d="M34 52h58" />
+			<path class="card-ring" d="M34 70h30" />
+			<path class="card-ring" d="M34 88h42" />
+			<path class="card-ring" d="M34 106h24" />
+			<circle class="check-dot" cx="87" cy="52" r="11" />
+			<path class="check" d="m82 52 3 3 7-8" />
 			<path
-				class="body"
-				d="M63 99c8-25 41-28 61-18 16 8 26 23 26 42 0 18-11 32-28 38-22 8-49 3-62-15-10-14-3-32 3-47Z"
+				class="dog-body"
+				d="M119 96c7-17 24-28 43-28 18 0 33 10 39 27 6 15 2 33-10 45-13 14-34 18-52 11-21-8-31-31-20-55Z"
 			/>
-			<path class="ear" d="M80 76c-5-24 9-43 27-42 12 1 10 24 4 36-7 14-21 21-31 6Z" />
-			<path
-				class="head"
-				d="M72 85c3-23 24-39 47-35 25 5 35 27 27 49-8 24-36 34-57 21-12-8-19-19-17-35Z"
-			/>
-			<path class="snout" d="M113 96c12-9 31-5 36 8 5 14-10 26-25 23-13-3-22-21-11-31Z" />
-			<path class="nose" d="M139 105c5 0 9 3 9 7s-4 7-9 7-9-3-9-7 4-7 9-7Z" />
-			<path class="leg" d="M76 145h18v24H76Z" />
-			<path class="leg" d="M126 143h18v26h-18Z" />
-			<path class="tail" d="M55 105c-21-1-34-14-30-29 2-8 12-7 15 0 3 8 9 13 20 14" />
-			<circle class="eye" cx="118" cy="77" r="4" />
+			<path class="dog-head" d="M132 87c1-18 16-32 34-32 21 0 34 15 32 35-2 19-18 33-37 32-17-1-30-17-29-35Z" />
+			<path class="dog-ear" d="M149 70c-7-19 3-35 17-36 10-1 11 18 6 28-5 11-15 18-23 8Z" />
+			<path class="dog-snout" d="M168 96c10-8 27-5 31 6 4 12-8 22-21 20-11-2-19-16-10-26Z" />
+			<circle class="dog-eye" cx="172" cy="74" r="4" />
+			<path class="dog-nose" d="M190 102c4 0 8 3 8 7s-4 7-8 7-8-3-8-7 4-7 8-7Z" />
+			<path class="dog-leg" d="M132 133h15v24h-15Z" />
+			<path class="dog-leg" d="M170 130h15v27h-15Z" />
+			<path class="tail" d="M115 100c-22 0-36-14-32-29 2-7 11-7 15-1 4 7 10 11 21 12" />
 		</svg>
 	</div>
 </section>
@@ -135,33 +137,50 @@
 		stroke: none;
 	}
 
-	.sun {
-		fill: #e0b95d;
+	.schedule-card {
+		fill: #fff6eb;
+		stroke: #e6d3bd;
+		stroke-width: 2;
 	}
 
-	.ground {
-		fill: #b8cbb5;
+	.card-ring,
+	.check {
+		fill: none;
+		stroke: #c58a5d;
+		stroke-width: 6;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 
-	.body,
-	.head,
-	.leg {
-		fill: #8f6650;
+	.check-dot {
+		fill: #d7a46f;
 	}
 
-	.ear,
-	.snout {
-		fill: #c98f6d;
+	.dog-body {
+		fill: #8a6047;
 	}
 
-	.nose,
-	.eye {
+	.dog-head {
+		fill: #a87156;
+	}
+
+	.dog-ear,
+	.dog-snout {
+		fill: #cf9a73;
+	}
+
+	.dog-nose,
+	.dog-eye {
 		fill: #18211c;
+	}
+
+	.dog-leg {
+		fill: #8a6047;
 	}
 
 	.tail {
 		fill: none;
-		stroke: #8c5b3f;
+		stroke: #8a6047;
 		stroke-width: 14;
 		stroke-linecap: round;
 	}

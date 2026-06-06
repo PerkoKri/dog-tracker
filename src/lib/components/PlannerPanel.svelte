@@ -180,109 +180,107 @@
 		</article>
 	</div>
 
-	<div class="planner-grid">
-		<section class="calendar-panel" aria-labelledby="calendar-title">
-			<div class="panel-heading">
-				<div>
-					<p class="eyebrow">Kalender</p>
-					<h3 id="calendar-title">{monthLabel}</h3>
-				</div>
-				<div class="month-actions">
-					<button type="button" onclick={() => changeMonth(-1)}>Zurück</button>
-					<button type="button" onclick={() => selectDate(todayDate())}>Heute</button>
-					<button type="button" onclick={() => changeMonth(1)}>Weiter</button>
-				</div>
+	<section class="calendar-panel" aria-labelledby="calendar-title">
+		<div class="panel-heading">
+			<div>
+				<p class="eyebrow">Kalender</p>
+				<h3 id="calendar-title">{monthLabel}</h3>
 			</div>
-
-			<div class="weekday-row" aria-hidden="true">
-				<span>Mo</span>
-				<span>Di</span>
-				<span>Mi</span>
-				<span>Do</span>
-				<span>Fr</span>
-				<span>Sa</span>
-				<span>So</span>
+			<div class="month-actions">
+				<button type="button" onclick={() => changeMonth(-1)}>Zurück</button>
+				<button type="button" onclick={() => selectDate(todayDate())}>Heute</button>
+				<button type="button" onclick={() => changeMonth(1)}>Weiter</button>
 			</div>
+		</div>
 
-			<div class="calendar-grid" aria-label="Monatskalender">
-				{#each calendarDays as day}
-					<button
-						class:active={day.isSelected}
-						class:today={day.isToday}
-						class:outside={!day.inMonth}
-						type="button"
-						onclick={() => selectDate(day.date)}
-					>
-						<strong>{day.number}</strong>
-						<span>{day.count}</span>
-						{#if day.holiday}
-							<small>{day.holiday.localName}</small>
-						{/if}
-					</button>
+		<div class="weekday-row" aria-hidden="true">
+			<span>Mo</span>
+			<span>Di</span>
+			<span>Mi</span>
+			<span>Do</span>
+			<span>Fr</span>
+			<span>Sa</span>
+			<span>So</span>
+		</div>
+
+		<div class="calendar-grid" aria-label="Monatskalender">
+			{#each calendarDays as day}
+				<button
+					class:active={day.isSelected}
+					class:today={day.isToday}
+					class:outside={!day.inMonth}
+					type="button"
+					onclick={() => selectDate(day.date)}
+				>
+					<strong>{day.number}</strong>
+					<span>{day.count}</span>
+					{#if day.holiday}
+						<small>{day.holiday.localName}</small>
+					{/if}
+				</button>
+			{/each}
+		</div>
+	</section>
+
+	<section class="day-panel" aria-labelledby="day-title">
+		<div class="panel-heading">
+			<div>
+				<p class="eyebrow">Tagesansicht</p>
+				<h3 id="day-title">
+					{new Intl.DateTimeFormat('de-CH', { weekday: 'long', day: '2-digit', month: 'long' }).format(
+						toDate(selectedDate)
+					)}
+				</h3>
+			</div>
+			<span class="muted">{selectedHoliday?.localName || 'Kein Feiertag'}</span>
+		</div>
+
+		<div class="task-list" aria-label="Aufgaben für den gewählten Tag">
+			{#if selectedDayReminders.length === 0}
+				<div class="empty-state">Für diesen Tag sind keine Aufgaben geplant.</div>
+			{:else}
+				{#each selectedDayReminders as reminder}
+					<article class:due={reminder.isDue}>
+						<div class="task-copy">
+							<strong>{reminder.title}</strong>
+							<span>{formatReminder(reminder)}</span>
+							{#if reminder.note}
+								<small>{reminder.note}</small>
+							{/if}
+						</div>
+						<div class="task-actions">
+							<button type="button" onclick={() => onCompleteReminder(reminder)}>Erledigt</button>
+							<button type="button" onclick={() => onDeleteReminder(reminder)}>×</button>
+						</div>
+					</article>
 				{/each}
-			</div>
-		</section>
+			{/if}
+		</div>
 
-		<section class="day-panel" aria-labelledby="day-title">
-			<div class="panel-heading">
+		<div class="routine-block">
+			<div class="panel-heading compact">
 				<div>
-					<p class="eyebrow">Tagesansicht</p>
-					<h3 id="day-title">
-						{new Intl.DateTimeFormat('de-CH', { weekday: 'long', day: '2-digit', month: 'long' }).format(
-							toDate(selectedDate)
-						)}
-					</h3>
+					<p class="eyebrow">Routinen</p>
+					<h3>Wiederkehrende Aufgaben</h3>
 				</div>
-				<span class="muted">{selectedHoliday?.localName || 'Kein Feiertag'}</span>
 			</div>
-
-			<div class="task-list" aria-label="Aufgaben für den gewählten Tag">
-				{#if selectedDayReminders.length === 0}
-					<div class="empty-state">Für diesen Tag sind keine Aufgaben geplant.</div>
+			<div class="compact-list">
+				{#if routineReminders.length === 0}
+					<span class="muted">Noch keine Routinen geplant.</span>
 				{:else}
-					{#each selectedDayReminders as reminder}
-						<article class:due={reminder.isDue}>
-							<div class="task-copy">
+					{#each routineReminders.slice(0, 5) as reminder}
+						<div class="compact-item">
+							<div>
 								<strong>{reminder.title}</strong>
 								<span>{formatReminder(reminder)}</span>
-								{#if reminder.note}
-									<small>{reminder.note}</small>
-								{/if}
 							</div>
-							<div class="task-actions">
-								<button type="button" onclick={() => onCompleteReminder(reminder)}>Erledigt</button>
-								<button type="button" onclick={() => onDeleteReminder(reminder)}>×</button>
-							</div>
-						</article>
+							<button type="button" onclick={() => onCompleteReminder(reminder)}>Erledigt</button>
+						</div>
 					{/each}
 				{/if}
 			</div>
-
-			<div class="routine-block">
-				<div class="panel-heading compact">
-					<div>
-						<p class="eyebrow">Routinen</p>
-						<h3>Wiederkehrende Aufgaben</h3>
-					</div>
-				</div>
-				<div class="compact-list">
-					{#if routineReminders.length === 0}
-						<span class="muted">Noch keine Routinen geplant.</span>
-					{:else}
-						{#each routineReminders.slice(0, 5) as reminder}
-							<div class="compact-item">
-								<div>
-									<strong>{reminder.title}</strong>
-									<span>{formatReminder(reminder)}</span>
-								</div>
-								<button type="button" onclick={() => onCompleteReminder(reminder)}>Erledigt</button>
-							</div>
-						{/each}
-					{/if}
-				</div>
-			</div>
-		</section>
-	</div>
+		</div>
+	</section>
 
 	<section class="task-editor" aria-labelledby="task-editor-title">
 		<div class="panel-heading">
@@ -524,12 +522,6 @@
 		font-size: 1.25rem;
 	}
 
-	.planner-grid {
-		display: grid;
-		grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-		gap: 12px;
-	}
-
 	.calendar-panel,
 	.day-panel,
 	.task-editor,
@@ -584,7 +576,7 @@
 	}
 
 	.calendar-grid button {
-		min-height: 92px;
+		min-height: 104px;
 		display: grid;
 		align-content: start;
 		gap: 6px;
@@ -727,16 +719,13 @@
 	}
 
 	@media (max-width: 920px) {
-		.summary-grid,
-		.planner-grid {
+		.summary-grid {
 			grid-template-columns: 1fr;
 		}
 	}
 
 	@media (max-width: 640px) {
-		.form-grid,
-		.weekday-row,
-		.calendar-grid {
+		.form-grid {
 			grid-template-columns: 1fr;
 		}
 

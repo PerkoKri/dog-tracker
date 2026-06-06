@@ -21,6 +21,14 @@ type DogInput = {
 		dose?: number;
 		unit?: string;
 	}>;
+	walkSchedules?: Array<{
+		id?: string;
+		title?: string;
+		name?: string;
+		time?: string;
+		amount?: number;
+		unit?: string;
+	}>;
 	dossier?: Array<{
 		id?: string;
 		title?: string;
@@ -148,6 +156,37 @@ function normalizeMedicationSchedules(input: DogInput) {
 	];
 }
 
+function normalizeWalkSchedules(input: DogInput) {
+	const schedules = Array.isArray(input.walkSchedules) ? input.walkSchedules : [];
+	const normalized = schedules
+		.map((item) => ({
+			id: cleanString(item?.id, 40) || randomId(),
+			title: cleanString(item?.title, 80) || cleanString(item?.name, 80) || 'Gassi gehen',
+			name: cleanString(item?.name, 80) || cleanString(item?.title, 80) || 'Gassi gehen',
+			time: normalizeTime(item?.time),
+			amount: normalizeAmount(item?.amount),
+			unit: cleanString(item?.unit, 30) || 'Minuten'
+		}))
+		.filter((item) => item.time && item.amount > 0);
+
+	if (normalized.length > 0) return normalized;
+
+	const legacyTime = normalizeTime(input.walkTime);
+	const legacyDuration = normalizeAmount(input.walkDuration);
+	if (!legacyTime || legacyDuration <= 0) return [];
+
+	return [
+		{
+			id: randomId(),
+			time: legacyTime,
+			amount: legacyDuration,
+			unit: normalizeDurationUnit(input.walkDurationUnit),
+			title: 'Gassi gehen',
+			name: 'Gassi gehen'
+		}
+	];
+}
+
 function normalizeDossier(input: DogInput) {
 	const items = Array.isArray(input.dossier) ? input.dossier : [];
 	return items
@@ -175,16 +214,14 @@ function cleanDog(input: DogInput, userId: string) {
 	const breed = cleanString(input.breed, 40);
 	const hint = cleanString(input.hint, 140);
 	if (!name) throw new Error('Hundename fehlt');
-	if (!breed) throw new Error('Rasse fehlt');
 
 	const feedingSchedules = normalizeFeedingSchedules(input);
 	const medicationSchedules = normalizeMedicationSchedules(input);
+	const walkSchedules = normalizeWalkSchedules(input);
 	const dossier = normalizeDossier(input);
-	const walkTime = normalizeTime(input.walkTime);
-	const walkDuration = normalizeAmount(input.walkDuration) || 30;
-	const walkDurationUnit = normalizeDurationUnit(input.walkDurationUnit);
 	const firstFeeding = feedingSchedules[0];
 	const firstMedication = medicationSchedules[0];
+	const firstWalk = walkSchedules[0];
 
 	return {
 		userId,
@@ -193,10 +230,11 @@ function cleanDog(input: DogInput, userId: string) {
 		hint,
 		feedingSchedules,
 		medicationSchedules,
+		walkSchedules,
 		dossier,
-		walkTime,
-		walkDuration,
-		walkDurationUnit,
+		walkTime: firstWalk?.time || normalizeTime(input.walkTime),
+		walkDuration: firstWalk?.amount || normalizeAmount(input.walkDuration) || 30,
+		walkDurationUnit: firstWalk?.unit || normalizeDurationUnit(input.walkDurationUnit),
 		feedingTime: firstFeeding?.time || '',
 		feedingAmount: firstFeeding?.amount || 0,
 		feedingUnit: firstFeeding?.unit || '',
