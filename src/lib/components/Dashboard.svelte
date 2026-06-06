@@ -25,7 +25,7 @@
 		</h2>
 		<p>
 			{#if !hasDogs}
-				Füge auf Home deinen ersten Hund hinzu. Danach kannst du Aktivitäten erfassen.
+				Füge auf Home deinen ersten Hund hinzu. Danach kannst du Aktivitäten dokumentieren.
 			{:else if latestActivity}
 				{formatActivity(latestActivity)}{latestActivity.note ? ` · ${latestActivity.note}` : ''}
 			{:else}

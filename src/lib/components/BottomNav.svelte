@@ -8,8 +8,8 @@
 			path: 'M4 11 12 4l8 7v8H4Z'
 		},
 		{
-			id: 'capture',
-			label: 'Erfassen',
+			id: 'activity',
+			label: 'Aktivität',
 			path: 'M5 12h14'
 		},
 		{
@@ -34,7 +34,7 @@
 			onclick={() => onNavigate(item.id)}
 		>
 			<svg viewBox="0 0 24 24" aria-hidden="true">
-				{#if item.id === 'capture'}
+				{#if item.id === 'activity'}
 					<path d={item.path} /><path d="M12 5v14" />
 				{:else if item.id === 'planner'}
 					<path d={item.path} /><path d="M17 3v4" /><path d="M4 9h16" /><path d="M5 5h14v15H5Z" />

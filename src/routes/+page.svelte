@@ -305,7 +305,7 @@
 	function navigate(view) {
 		statusMessage = '';
 		activeView = view;
-		if (view === 'capture') {
+		if (view === 'activity') {
 			entryMessage = '';
 			currentStep = 1;
 			activityDate = activityDate || todayDate();
@@ -1173,7 +1173,7 @@
 	<title>DogTracker</title>
 	<meta
 		name="description"
-		content="DogTracker Prototyp zum Erfassen von Gassi, Futter, Pflege, Medikamenten und Arztterminen."
+		content="DogTracker Prototyp zum Dokumentieren von Gassi, Futter, Pflege, Medikamenten und Arztterminen."
 	/>
 </svelte:head>
 
@@ -1214,8 +1214,8 @@
 		/>
 
 		<section class="quick-actions" aria-label="Schnellzugriff">
-			<button class="primary-action" type="button" onclick={() => navigate('capture')}>
-				Aktivität erfassen
+			<button class="primary-action" type="button" onclick={() => navigate('activity')}>
+				Neue Aktivität
 			</button>
 			<button class="secondary-action" type="button" onclick={() => navigate('planner')}>
 				Neue Aufgabe
@@ -1258,12 +1258,12 @@
 			{clearActivities}
 			onDeleteActivity={deleteActivity}
 		/>
-	{:else if activeView === 'capture'}
+	{:else if activeView === 'activity'}
 		{#if dogs.length === 0}
 			<section class="empty-panel" aria-labelledby="first-dog-title">
 				<p class="eyebrow">Erster Schritt</p>
 				<h2 id="first-dog-title">Erfasse zuerst deinen Hund.</h2>
-				<p>Danach kannst du über Erfassen Gassi, Futter, Pflege, Medikamente und Arzttermine dokumentieren.</p>
+				<p>Danach kannst du hier Gassi, Futter, Pflege, Medikamente und Arzttermine dokumentieren.</p>
 				<button class="primary-action" type="button" onclick={() => (activeView = 'home')}>
 					Hund hinzufügen
 				</button>
