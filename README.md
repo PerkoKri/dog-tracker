@@ -30,7 +30,7 @@
 - **Mindestumfang:** Der Prototyp ist eine interaktive Web-App mit mehreren Bereichen, Login/Registrierung, Datenbankanbindung, persönlicher Hunde-Verwaltung, Erstellen und Löschen von Aktivitäten, Verlauf, Netlify-Deployment, GitHub-Repository und dokumentierter Usability Evaluation.
 - **Erweiterung:** Die Erfassung unterscheidet zwischen Gassi, Futter, Pflege, Medikamenten und Arztterminen. Zusätzlich gibt es Anhänge für Fotos und Dokumente, einen Planer mit Kalender- und Tagesansicht, allgemeine Aufgaben, Erledigt-Funktion für kommende Aufgaben und Cloud-Speicher für die Hundeakte.
 - **Annahmen [Optional]:** Nutzer:innen möchten die App vor allem mobil und schnell bedienen. Der Ablauf muss deshalb kurz, verständlich und ohne komplexe Menüs funktionieren.
-- **Abgrenzung [Optional]:** Nicht Bestandteil des Prototyps sind Rollen wie Admin/User, native Push-Benachrichtigungen im Hintergrund, Synchronisation mit externen Kalendern, OCR-Auswertung von Dokumenten oder produktive Freigabe- und Rechteprozesse für einen realen Betrieb.
+- **Abgrenzung [Optional]:** Nicht Bestandteil des Prototyps sind Rollen wie Admin/User, echte Server-Push-Benachrichtigungen im Hintergrund, Synchronisation mit externen Kalendern, OCR-Auswertung von Dokumenten oder produktive Freigabe- und Rechteprozesse für einen realen Betrieb. Browser-Erinnerungen können aktiviert werden, solange die Web-App geöffnet ist.
 
 ## 3. Vorgehen & Artefakte
 
@@ -160,7 +160,7 @@
 
 ### 4.4 Planer, Erinnerungen und Kalender
 
-- **Beschreibung & Nutzen:** Nutzer:innen können zukünftige Aufgaben wie Futter, Medikamente, Arzttermine oder allgemeine To-dos planen. Fällige Erinnerungen erscheinen in der App, können als erledigt markiert werden und werden danach im Verlauf dokumentiert. Der Planer trennt Kalender, Tagesansicht und offene Aufgaben. Bei der Hunde-Erfassung können Routinewerte wie mehrere Futterzeiten, Medikamente oder Gassi-Zeit direkt angegeben werden.
+- **Beschreibung & Nutzen:** Nutzer:innen können zukünftige Aufgaben wie Futter, Medikamente, Arzttermine oder allgemeine To-dos planen. Fällige Erinnerungen erscheinen in der App, können als erledigt markiert werden und werden danach im Verlauf dokumentiert. Zusätzlich können Browser-Erinnerungen aktiviert werden, solange die App geöffnet ist. Der Planer trennt Kalender, Tagesansicht und offene Aufgaben. Bei der Hunde-Erfassung können Routinewerte wie mehrere Futterzeiten, Medikamente oder Gassi-Zeit direkt angegeben werden.
 - **Wo umgesetzt:** Frontend in `PlannerPanel.svelte` und `+page.svelte`, Backend in `netlify/functions/reminders.mts`, Datenbank in der Collection `reminders`.
 - **Externe Daten:** Der Planer arbeitet direkt mit den gespeicherten Aufgaben und Erinnerungen. Zusätzliche Dritt-APIs sind dafür nicht nötig.
 - **Aus Evaluation abgeleitet?:** Teilweise. Die App wurde damit von einer reinen Nach-Erfassung zu einer Kombination aus Dokumentation und vorausschauender Planung erweitert.

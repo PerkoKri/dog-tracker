@@ -148,7 +148,7 @@
 			<h2 id="planner-title">Kalender, Aufgaben und Routinen</h2>
 		</div>
 		<button class="ghost-button" type="button" onclick={onRequestNotifications}>
-			{notificationPermission === 'granted' ? 'Push aktiv' : 'Push aktivieren'}
+			{notificationPermission === 'granted' ? 'Erinnerung aktiv' : 'Erinnerung aktivieren'}
 		</button>
 	</div>
 

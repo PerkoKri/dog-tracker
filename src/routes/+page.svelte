@@ -27,6 +27,7 @@
 	let authName = $state('');
 	let authEmail = $state('');
 	let authPassword = $state('');
+	let authPasswordConfirm = $state('');
 	let authMessage = $state('');
 	let isAuthenticating = $state(false);
 	let currentStep = $state(1);
@@ -255,8 +256,13 @@
 	}
 
 	async function submitAuth() {
-		isAuthenticating = true;
 		authMessage = '';
+		if (authMode === 'register' && authPassword !== authPasswordConfirm) {
+			authMessage = 'Die Passwörter stimmen nicht überein.';
+			return;
+		}
+
+		isAuthenticating = true;
 
 		try {
 			const response = await fetch(`/api/auth?action=${authMode}`, {
@@ -297,6 +303,7 @@
 		reminders = [];
 		dogName = '';
 		reminderDogName = '';
+		authPasswordConfirm = '';
 		currentStep = 1;
 		activeView = 'home';
 		localStorage.removeItem(authStorageKey);
@@ -1009,7 +1016,7 @@
 
 	async function requestNotifications() {
 		if (typeof Notification === 'undefined') {
-			reminderMessage = 'Browser-Benachrichtigungen werden hier nicht unterstützt.';
+			reminderMessage = 'Browser-Erinnerungen werden hier nicht unterstützt.';
 			notificationPermission = 'unsupported';
 			return;
 		}
@@ -1017,8 +1024,8 @@
 		notificationPermission = await Notification.requestPermission();
 		reminderMessage =
 			notificationPermission === 'granted'
-				? 'Benachrichtigungen sind aktiv.'
-				: 'Benachrichtigungen wurden nicht aktiviert.';
+				? 'Browser-Erinnerungen sind aktiv, solange die App geöffnet ist.'
+				: 'Browser-Erinnerungen wurden nicht aktiviert.';
 		notifyDueReminders();
 	}
 
@@ -1183,6 +1190,7 @@
 		bind:name={authName}
 		bind:email={authEmail}
 		bind:password={authPassword}
+		bind:passwordConfirm={authPasswordConfirm}
 		{isAuthenticating}
 		{authMessage}
 		onSubmit={submitAuth}
