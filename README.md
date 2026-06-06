@@ -100,14 +100,14 @@
   - `PlannerPanel.svelte`: Kalender, Erinnerungen und Erledigt-Funktion
   - `Timeline.svelte`: Verlauf mit Löschfunktion
   - `BottomNav.svelte`: Navigation zwischen Home, Aktivität, Planer und Verlauf
-- **Daten & Schnittstellen:** Die strukturierten Daten werden in MongoDB in der Datenbank `dog-tracker` gespeichert. Verwendete Collections sind `users`, `dogs`, `activities` und `reminders`. Hunde speichern mehrere Futterzeiten, mehrere Medikamente und ein Dossier mit Dokumenten. Dateien wie Fotos, PDFs oder Word-Dokumente werden getrennt davon in Netlify Blobs gespeichert. API-Endpunkte werden über Netlify Functions bereitgestellt:
+- **Daten & Schnittstellen:** Die strukturierten Daten werden in MongoDB in der Datenbank `dog-tracker` gespeichert. Verwendete Collections sind `users`, `dogs`, `activities` und `reminders`. Hunde speichern mehrere Futterzeiten, mehrere Medikamente und ein Dossier mit Dokumenten. Dateien wie Fotos, PDFs oder Word-Dokumente werden über die eigene Datei-API `/api/files` hochgeladen und getrennt davon in Netlify Blobs gespeichert. API-Endpunkte werden über Netlify Functions bereitgestellt:
   - `/api/auth`
   - `/api/dogs`
   - `/api/activities`
   - `/api/reminders`
   - `/api/files`
-- **Externe Daten:** Für die finale Version wird keine zusätzliche Dritt-API im Kernworkflow benötigt. Die App konzentriert sich auf die direkte Planung, Dokumentation und Verwaltung der Hundedaten.
-- **Anhänge:** Aktivitäten können mit einem Foto oder Dokument gespeichert werden, z. B. Impfausweis, Tierarztrechnung, Medikamentenplan oder Foto. Die App lädt Anhänge über `/api/files` in den Cloud-Speicher hoch und speichert in MongoDB nur den Dateiverweis. Anhänge werden direkt im Verlauf angezeigt beziehungsweise als Datei geöffnet.
+- **Externe Daten:** Für die finale Version wird keine zusätzliche Dritt-Daten-API im Kernworkflow benötigt. Stattdessen nutzt der Prototyp eigene API-Endpunkte für Authentifizierung, Datenpersistenz und Datei-Uploads.
+- **Anhänge:** Aktivitäten können mit einem Foto oder Dokument gespeichert werden, z. B. Impfausweis, Tierarztrechnung, Medikamentenplan oder Foto. Die App lädt Anhänge über die API `/api/files` in den Cloud-Speicher Netlify Blobs hoch und speichert in MongoDB nur den Dateiverweis mit signierter Datei-URL. Anhänge werden direkt im Verlauf angezeigt beziehungsweise als Datei geöffnet.
 - **Deployment:** https://dog-tracker-kristian.netlify.app/
 - **Besondere Entscheidungen:** Passwörter werden serverseitig gehasht. Aktivitäten und Hunde werden über `userId` dem eingeloggten Account zugeordnet. Als Fallback werden Aktivitäten im Browser gespeichert, falls die API kurzfristig nicht erreichbar ist.
 

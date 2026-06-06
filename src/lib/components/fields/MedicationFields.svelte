@@ -72,6 +72,8 @@
 
 	input {
 		width: 100%;
+		min-width: 0;
+		max-width: 100%;
 		border: 1px solid #dfe4dd;
 		border-radius: 12px;
 		background: #ffffff;
@@ -84,5 +86,11 @@
 	input:focus {
 		border-color: #2c6f67;
 		box-shadow: 0 0 0 3px rgba(44, 111, 103, 0.12);
+	}
+
+	@media (max-width: 430px) {
+		.form-grid {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>

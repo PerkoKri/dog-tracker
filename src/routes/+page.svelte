@@ -1351,6 +1351,32 @@
 	:global(select),
 	:global(textarea) {
 		font: inherit;
+		min-width: 0;
+		max-width: 100%;
+	}
+
+	:global(input),
+	:global(textarea) {
+		-webkit-appearance: none;
+		appearance: none;
+	}
+
+	:global(input[type='date']),
+	:global(input[type='time']) {
+		-webkit-appearance: none;
+		appearance: none;
+		line-height: 1.2;
+		text-align: center;
+	}
+
+	:global(input[type='file']) {
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	:global(label),
+	:global(fieldset) {
+		min-width: 0;
 	}
 
 	:global(button) {
@@ -1371,7 +1397,7 @@
 		width: min(100%, 480px);
 		min-height: 100vh;
 		margin: 0 auto;
-		padding: 18px 16px 96px;
+		padding: 18px 16px calc(148px + env(safe-area-inset-bottom));
 	}
 
 	.topbar {

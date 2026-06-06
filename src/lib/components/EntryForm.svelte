@@ -397,6 +397,8 @@
 	input,
 	textarea {
 		width: 100%;
+		min-width: 0;
+		max-width: 100%;
 		border: 1px solid #dfe4dd;
 		border-radius: 12px;
 		background: #ffffff;
@@ -528,5 +530,26 @@
 
 	.invisible {
 		visibility: hidden;
+	}
+
+	@media (max-width: 430px) {
+		.section-heading {
+			align-items: flex-start;
+			flex-wrap: wrap;
+		}
+
+		.form-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.form-actions {
+			gap: 10px;
+		}
+
+		.primary-button,
+		.secondary-button {
+			flex: 1;
+			min-width: 120px;
+		}
 	}
 </style>

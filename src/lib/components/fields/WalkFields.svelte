@@ -82,6 +82,8 @@
 	select,
 	input {
 		width: 100%;
+		min-width: 0;
+		max-width: 100%;
 		border: 1px solid #dfe4dd;
 		border-radius: 12px;
 		background: #ffffff;
@@ -106,5 +108,11 @@
 		padding: 10px 12px;
 		font-size: 0.86rem;
 		line-height: 1.35;
+	}
+
+	@media (max-width: 430px) {
+		.form-grid {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>

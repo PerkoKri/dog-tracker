@@ -666,6 +666,8 @@
 	input,
 	textarea {
 		width: 100%;
+		min-width: 0;
+		max-width: 100%;
 		border: 1px solid #dfe4dd;
 		border-radius: 12px;
 		background: #ffffff;
