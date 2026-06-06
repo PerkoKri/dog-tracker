@@ -7,7 +7,6 @@
 	let {
 		reminders = [],
 		dogs = [],
-		holidays = [],
 		notificationPermission = 'default',
 		reminderDogName = $bindable(''),
 		reminderType = $bindable('Allgemein'),
@@ -50,8 +49,7 @@
 		openReminders.filter((reminder) => ['Allgemein', 'Andere'].includes(reminder.type))
 	);
 	let monthLabel = $derived(formatMonthLabel(monthAnchor));
-	let calendarDays = $derived(buildMonthDays(monthAnchor, reminders, holidays, selectedDate));
-	let selectedHoliday = $derived(holidays.find((holiday) => holiday.date === selectedDate));
+	let calendarDays = $derived(buildMonthDays(monthAnchor, reminders, selectedDate));
 
 	function todayDate() {
 		return new Date().toISOString().slice(0, 10);
@@ -82,12 +80,10 @@
 		return new Intl.DateTimeFormat('de-CH', { month: 'long', year: 'numeric' }).format(toDate(value));
 	}
 
-	function buildMonthDays(anchor, allReminders, allHolidays, selected) {
+	function buildMonthDays(anchor, allReminders, selected) {
 		const monthStart = toDate(startOfMonth(anchor));
 		const weekdayOffset = (monthStart.getDay() + 6) % 7;
 		monthStart.setDate(monthStart.getDate() - weekdayOffset);
-
-		const holidayMap = new Map(allHolidays.map((holiday) => [holiday.date, holiday]));
 
 		return Array.from({ length: 42 }, (_, index) => {
 			const date = new Date(monthStart);
@@ -103,7 +99,6 @@
 				inMonth: date.getMonth() === toDate(anchor).getMonth(),
 				isToday: sameDate(dateString, todayDate()),
 				isSelected: sameDate(dateString, selected),
-				holiday: holidayMap.get(dateString),
 				count: dayReminders.length
 			};
 		});
@@ -214,9 +209,6 @@
 				>
 					<strong>{day.number}</strong>
 					<span>{day.count}</span>
-					{#if day.holiday}
-						<small>{day.holiday.localName}</small>
-					{/if}
 				</button>
 			{/each}
 		</div>
@@ -232,7 +224,7 @@
 					)}
 				</h3>
 			</div>
-			<span class="muted">{selectedHoliday?.localName || 'Kein Feiertag'}</span>
+			<span class="muted">Kalenderauswahl</span>
 		</div>
 
 		<div class="task-list" aria-label="Aufgaben für den gewählten Tag">
@@ -503,7 +495,6 @@
 
 	.summary-grid span,
 	.weekday-row span,
-	.calendar-grid small,
 	.calendar-grid span,
 	.task-copy span,
 	.task-copy small,
@@ -599,12 +590,6 @@
 	.calendar-grid button.active {
 		border-color: #2c6f67;
 		box-shadow: 0 0 0 3px rgba(44, 111, 103, 0.08);
-	}
-
-	.calendar-grid small {
-		color: #8a5d32;
-		font-size: 0.66rem;
-		font-weight: 800;
 	}
 
 	.task-list,

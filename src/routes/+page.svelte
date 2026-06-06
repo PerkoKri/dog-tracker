@@ -21,7 +21,6 @@
 	let activities = $state([]);
 	let dogs = $state([]);
 	let reminders = $state([]);
-	let holidays = $state([]);
 	let user = $state(null);
 	let token = $state('');
 	let authMode = $state('login');
@@ -108,7 +107,6 @@
 			await loadDogs();
 			await loadActivities();
 			await loadReminders();
-			await loadHolidays();
 		} else {
 			isLoading = false;
 		}
@@ -284,7 +282,6 @@
 			await loadDogs();
 			await loadActivities();
 			await loadReminders();
-			await loadHolidays();
 		} catch (error) {
 			authMessage = error instanceof Error ? error.message : 'Login fehlgeschlagen';
 		} finally {
@@ -298,7 +295,6 @@
 		activities = [];
 		dogs = [];
 		reminders = [];
-		holidays = [];
 		dogName = '';
 		reminderDogName = '';
 		currentStep = 1;
@@ -379,18 +375,6 @@
 			reminders = Array.isArray(data.reminders) ? data.reminders : [];
 		} catch {
 			statusMessage = 'Erinnerungen konnten gerade nicht geladen werden.';
-		}
-	}
-
-	async function loadHolidays() {
-		try {
-			const year = new Date().getFullYear();
-			const response = await fetch(`/api/holidays?year=${year}`, { headers: authHeaders() });
-			if (!response.ok) throw new Error('Feiertage konnten nicht geladen werden');
-			const data = await response.json();
-			holidays = Array.isArray(data.holidays) ? data.holidays : [];
-		} catch {
-			holidays = [];
 		}
 	}
 
@@ -1315,7 +1299,6 @@
 		<PlannerPanel
 			reminders={sortedReminders}
 			{dogs}
-			{holidays}
 			{notificationPermission}
 			bind:reminderDogName
 			bind:reminderType
